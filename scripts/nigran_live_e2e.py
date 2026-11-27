@@ -314,6 +314,13 @@ def main() -> int:
             final2 = body(c.get(f"/attempts/{a2['attempt_id']}", headers=h(ot)))
             kept = final2["responses"][0]["selected_option_id"] == q2["options"][0]["option_id"]
             step("5.3 expired attempt finalized with the answer saved in time", final2["status"] == "submitted" and kept, str(final2)[:200])
+            step("M8 password change refuses a wrong current password", c.post("/auth/change-password", headers=h(ot), json={"current_password": "nope", "new_password": "NewPass2026x"}).status_code == 400)
+            step("M8 password change enforces the policy", c.post("/auth/change-password", headers=h(ot), json={"current_password": pw, "new_password": "short"}).status_code == 422)
+            changed = c.post("/auth/change-password", headers=h(ot), json={"current_password": pw, "new_password": "Changed2026Pass"})
+            step("M8 candidate changes own password", changed.status_code == 200, changed.text[:200])
+            step("M8 new password signs in; old one no longer does",
+                 c.post("/auth/login", json={"email": users["other"]["email"], "password": "Changed2026Pass"}).status_code == 200
+                 and c.post("/auth/login", json={"email": users["other"]["email"], "password": pw}).status_code == 401)
         except AssertionError:
             pass
 

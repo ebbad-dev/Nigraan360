@@ -153,7 +153,9 @@ test("examiner builds questions of every type in the bank and the role pages ren
 test("administrator sees user and role management; candidate cannot open examiner pages", async ({ page, request }) => {
   const errors = trackErrors(page);
   await uiLogin(page, ADMIN.email, ADMIN.password, /\/admin/);
-  await expect(page.getByText(/examiner@nigran360.demo/).first()).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Users pages" })).toBeVisible();
+  await page.getByPlaceholder("Search users").fill("examiner@nigran360.demo");
+  await expect(page.getByText("examiner@nigran360.demo").first()).toBeVisible();
   expect(errors, errors.join("\n")).toEqual([]);
 
   const { email, password } = await submittedExam(request);

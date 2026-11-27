@@ -966,6 +966,13 @@ export const api = {
     return http<any>(`/disputes/${disputeId}/decision`, { method: "POST", body: JSON.stringify(data) });
   },
 
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ status: string }> {
+    return http<{ status: string }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+  },
+
   async startSandbox(examId: string): Promise<any> {
     return http<any>(`/exams/${examId}/sandbox`, { method: "POST", body: JSON.stringify({}) });
   },

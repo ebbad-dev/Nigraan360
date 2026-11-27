@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Building2, FileClock, KeyRound, Plus, Search, ShieldCheck, UserPlus, Users } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { GlassCard } from "@/components/common/GlassCard";
@@ -29,6 +29,29 @@ export const Route = createFileRoute("/admin")({
   component: AdminConsole,
 });
 
+const PAGE_SIZE = 25;
+
+function Pager({ page, total, onPage, label }: { page: number; total: number; onPage: (page: number) => void; label: string }) {
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (total <= PAGE_SIZE) return null;
+  return (
+    <nav aria-label={`${label} pages`} className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
+      <span>
+        {page * PAGE_SIZE + 1}–{Math.min(total, (page + 1) * PAGE_SIZE)} of {total}
+      </span>
+      <span className="flex gap-2">
+        <button type="button" className="rounded-lg border border-border px-3 py-1 disabled:opacity-40" disabled={page === 0} onClick={() => onPage(page - 1)}>
+          Previous
+        </button>
+        <span className="px-2 py-1">Page {page + 1} of {pages}</span>
+        <button type="button" className="rounded-lg border border-border px-3 py-1 disabled:opacity-40" disabled={page >= pages - 1} onClick={() => onPage(page + 1)}>
+          Next
+        </button>
+      </span>
+    </nav>
+  );
+}
+
 function AdminConsole() {
   const tenants = useTenants();
   const auditLogs = useAuditLogs();
@@ -37,7 +60,9 @@ function AdminConsole() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
 
-  const recentActions = useMemo(() => auditLogs.data ?? [], [auditLogs.data]);
+  const allActions = useMemo(() => auditLogs.data ?? [], [auditLogs.data]);
+  const [auditPage, setAuditPage] = useState(0);
+  const recentActions = allActions.slice(auditPage * PAGE_SIZE, (auditPage + 1) * PAGE_SIZE);
   const tenantRows = tenants.data ?? [];
 
   return (
@@ -163,6 +188,7 @@ function AdminConsole() {
                 </tbody>
               </table>
             </div>
+            <Pager page={auditPage} total={allActions.length} onPage={setAuditPage} label="Audit log" />
           </GlassCard>
         </div>
       </div>
@@ -175,6 +201,10 @@ function UserManagement({ tenants }: { tenants: Tenant[] }) {
   const [role, setRole] = useState("");
   const [tenantId, setTenantId] = useState("");
   const users = useAdminUsers({ q, role, tenant_id: tenantId });
+  const [userPage, setUserPage] = useState(0);
+  const allUsers = users.data ?? [];
+  const pageUsers = allUsers.slice(userPage * PAGE_SIZE, (userPage + 1) * PAGE_SIZE);
+  useEffect(() => setUserPage(0), [q, role, tenantId]);
   const createUser = useCreateAdminUser();
   const updateUser = useUpdateAdminUser();
   const setPassword = useSetAdminUserPassword();
@@ -272,7 +302,7 @@ function UserManagement({ tenants }: { tenants: Tenant[] }) {
             </tr>
           </thead>
           <tbody>
-            {(users.data ?? []).map((row) => (
+            {pageUsers.map((row) => (
               <tr key={row.user_id} className="border-t border-white/10 align-top">
                 <td className="px-3 py-3">
                   <div className="font-medium">{row.full_name}</div>
@@ -320,6 +350,7 @@ function UserManagement({ tenants }: { tenants: Tenant[] }) {
           </tbody>
         </table>
       </div>
+      <Pager page={userPage} total={allUsers.length} onPage={setUserPage} label="Users" />
       {updateUser.error && <ErrorLine message={updateUser.error.message} />}
       {setPassword.error && <ErrorLine message={setPassword.error.message} />}
     </GlassCard>

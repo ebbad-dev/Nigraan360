@@ -66,7 +66,7 @@ export function redirectForRole(role?: Role): string {
 export function roleCanAccess(role: Role | undefined, pathname: string): boolean {
   if (!role) return false;
   if (role === "admin") return true;
-  if (pathname === "/" || pathname === "/login") return true;
+  if (pathname === "/" || pathname === "/login" || pathname === "/account") return true;
   if (role === "instructor") {
     return [
       "/instructor",

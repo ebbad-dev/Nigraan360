@@ -39,6 +39,11 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
 class ForgotPasswordRequest(BaseModel):
     email: str
 
@@ -106,6 +111,15 @@ def create_identity_router(
             request=request,
         )
         return session
+
+    @router.post("/change-password")
+    def change_password(req: ChangePasswordRequest, request: Request, user: dict = Depends(current_user)):
+        try:
+            result = service.change_password(user, req.current_password, req.new_password)
+        except IdentityServiceError as exc:
+            handle_error(exc)
+        audit("auth.password_changed", actor=user, resource_type="user", resource_id=user["user_id"], request=request)
+        return result
 
     @router.get("/me", response_model=UserPublic)
     def auth_me(user: dict = Depends(current_user)):

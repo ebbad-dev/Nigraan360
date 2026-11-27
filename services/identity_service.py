@@ -181,6 +181,19 @@ class IdentityService:
             ) from exc
         return user
 
+    def change_password(self, user: dict, current_password: str, new_password: str) -> dict:
+        repo = self.repository_provider()
+        account = repo.get_user(user["user_id"])
+        if not account or not verify_password(current_password or "", account.get("password_hash", "")):
+            raise IdentityServiceError(400, "invalid_current_password", "Your current password is incorrect.")
+        if current_password == new_password:
+            raise IdentityServiceError(422, "validation_error", "Choose a password different from your current one.")
+        errors = validate_password(new_password)
+        if errors:
+            raise IdentityServiceError(422, "validation_error", "Password does not meet requirements.", errors)
+        repo.update_password(account["user_id"], hash_password(new_password))
+        return {"status": "password_changed"}
+
     def reset_password(self, token: str, password: str) -> dict:
         errors = validate_password(password)
         if errors:

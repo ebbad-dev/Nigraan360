@@ -1,6 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
+  UserCog,
   LayoutDashboard,
   Users,
   ClipboardCheck,
@@ -42,6 +43,7 @@ const nav = [
   { to: "/reports", label: "Reports", icon: FileText, roles: ["student", "instructor", "admin"] },
   { to: "/admin", label: "Admin Console", icon: Building2, roles: ["admin"] },
   { to: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },
+  { to: "/account", label: "Account", icon: UserCog, roles: ["student", "instructor", "admin"] },
 ] as const;
 
 export function AppShell({ children, variant = "default" }: { children: React.ReactNode; variant?: "default" | "exam" }) {
