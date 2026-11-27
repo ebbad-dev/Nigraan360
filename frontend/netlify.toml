@@ -1,0 +1,13 @@
+# Netlify: set the site's base directory to `frontend`.
+# VITE_API_BASE_URL must be set in the Netlify site environment to the public API URL.
+[build]
+  command = "npm ci && npm run build"
+  publish = "dist/client"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+[[redirects]]
+  from = "/*"
+  to = "/_shell.html"
+  status = 200
