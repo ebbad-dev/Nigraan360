@@ -1,4 +1,4 @@
-# Nigran 360
+# نگران 360 (Nigran 360)
 
 **Secure Examination Management System** — Technoverse 5.0 Web-e-Thon submission.
 
@@ -116,13 +116,22 @@ The `PROCTORAI_*` variable names are kept from the original codebase for deploym
 ## Tests
 
 ```powershell
-.venv\Scripts\python -m pytest tests -q               # 85 unit/service tests
-.venv\Scripts\python scripts\nigran_live_e2e.py       # 73 live checks against SQL Server
+.venv\Scripts\python -m pytest tests -q               # 89 unit/service tests
+.venv\Scripts\python scripts\nigran_live_e2e.py       # 98 live checks against SQL Server
 cd frontend; npm run typecheck; npm run build
-npx playwright test                                   # 8 browser tests (needs API + frontend running)
+npx playwright test                                   # 11 browser tests incl. WCAG 2.2 AA axe scan (needs API + frontend running)
 ```
 
 Playwright uses the installed Chrome. Point it at a running stack with `E2E_BASE_URL` and `E2E_API_URL`; the defaults are `http://127.0.0.1:8090` and `http://127.0.0.1:5071`.
+
+## Security and integrity controls
+
+- Failed sign-ins are throttled: 5 per account and IP, or 30 per IP, within 5 minutes returns 429.
+- Answer writes re-check, inside the same SQL statement, that the attempt is open and before its server deadline.
+- Grade changes are optimistic and recorded in `GradeHistory`. Amending a published result requires a reason.
+- Examiners can access only exams they own, including proctoring sessions; admins can access all.
+- Users can change their own password from **Account**.
+- Brand: the Urdu wordmark `نگران 360` with self-hosted fonts (IBM Plex Sans and Mono, Source Serif 4, Gulzar). See `docs/nigran360/redesign-audit/` for the audit, design system and roadmap.
 
 ## Limitations
 - The camera, microphone and phone-detection engine needs a local machine. In the cloud deployment, browser-side monitoring (tab switches, clipboard, fullscreen) still works.

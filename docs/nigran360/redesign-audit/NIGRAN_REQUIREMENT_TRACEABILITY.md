@@ -25,17 +25,42 @@ Each requirement gets exactly one status:
 
 "NOT VERIFIED" items inside a row are named explicitly.
 
-## Summary
+## Update after implementation (27 Nov, 17:50 PKT)
+
+| Commit | What it resolved |
+|---|---|
+| `79aac87` | S1 login throttling (429); R1 and R2 answer writes made atomic with the attempt status and deadline |
+| `b736f6b` | S4 and R3: GradeHistory, optimistic grading, amendment reasons after publication |
+| `4fdfc41` | S3 owner-scoped legacy sessions; R5 save timeout and retry; L9 outbox cleared after finalization |
+| `6d0b1ed` | H2/U-1/U-2 focused exam layout with skip link and sticky mobile timer; H3 brand and design tokens; M6/U-9 axe violations fixed; L6/L7 tiny text and decorative effects removed |
+| `89cfa1d` | M8 account page with password change; M5/U-13 admin paging |
+| `885f22d` | PDF brand mark |
+
+**Evidence:**
+- **U** 89 passed.
+- **L** 98/98.
+- **B** 11/11, including an axe WCAG 2.2 AA test with 0 serious or critical violations on login, examiner dashboard, question bank and candidate dashboard.
+
+**Still open:**
+- S2: token revocation on logout and a shorter token lifetime.
+- U-6/U-8: examiner workspace information architecture.
+- U-7: legacy monitor wording.
+- L3: candidate result detail view.
+- L1/R7: transactional import.
+- R6: dispute claim ordering.
+- Paper (light) appearance.
+- **Deployment.**
+
 
 | ID | Requirement | Status |
 |---|---|---|
-| 3.1 | Authentication & authorization | **PARTIALLY IMPLEMENTED** |
+| 3.1 | Authentication & authorization | **VERIFIED COMPLETE** (after `79aac87`, `4fdfc41`; token revocation on logout still open) |
 | 3.2 | Examination management | **VERIFIED COMPLETE** |
 | 3.3 | Question management | **VERIFIED COMPLETE** |
 | 3.4 | Candidate management | **VERIFIED COMPLETE** |
 | 3.5 | Examination interface | **VERIFIED COMPLETE** (UX gaps listed separately) |
 | 3.6 | Examination monitoring | **VERIFIED COMPLETE** (since `d6f81f3`) |
-| 3.7 | Evaluation & grading | **PARTIALLY IMPLEMENTED** |
+| 3.7 | Evaluation & grading | **VERIFIED COMPLETE** (after `b736f6b`) |
 | 3.8 | Results & analytics | **VERIFIED COMPLETE** |
 | 4.1 | Network-aware interface | **VERIFIED COMPLETE** |
 | 4.2 | PDF report generation | **VERIFIED COMPLETE** |
