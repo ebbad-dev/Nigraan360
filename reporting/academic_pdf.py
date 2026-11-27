@@ -26,6 +26,25 @@ except ImportError:
     _REPORTLAB = False
 
 
+def _noon_mark(size: float):
+    """Vector "open noon" brand mark: a near-complete ring with the noon's dot in the gap."""
+    import math
+
+    from reportlab.graphics.shapes import Circle, Drawing, PolyLine
+
+    drawing = Drawing(size, size)
+    c, r = size / 2, size * 0.34
+    # Ring from -30 deg clockwise to -60 deg (gap at the top right), in PDF y-up coordinates.
+    points = []
+    for step in range(0, 331, 6):
+        angle = math.radians(30 - step)
+        points += [c + r * math.cos(-angle), c + r * math.sin(-angle)]
+    drawing.add(PolyLine(points, strokeColor=colors.HexColor("#23408E"), strokeWidth=size * 0.11, strokeLineCap=1))
+    gap = math.radians(45)
+    drawing.add(Circle(c + r * math.cos(gap), c + r * math.sin(gap), size * 0.072, fillColor=colors.HexColor("#C8891A"), strokeColor=None))
+    return drawing
+
+
 def build_academic_pdf(context: dict) -> bytes:
     """Render an academic result PDF and return the bytes.
 
@@ -95,8 +114,12 @@ def build_academic_pdf(context: dict) -> bytes:
     story: list[Any] = []
 
     # Header
-    story.append(Paragraph("Nigran 360", title_style))
-    story.append(Paragraph("Official Examination Result", sub_style))
+    header = Table(
+        [[_noon_mark(1.1 * cm), [Paragraph("Nigran 360", title_style), Paragraph("Official Examination Result", sub_style)]]],
+        colWidths=[1.4 * cm, None],
+    )
+    header.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
+    story.append(header)
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#1a3c5e")))
     story.append(Spacer(1, 0.4 * cm))
 
