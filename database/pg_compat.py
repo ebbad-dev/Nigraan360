@@ -40,6 +40,34 @@ def _as_utc(value: Any) -> Any:
 # SQL translator
 # ---------------------------------------------------------------------------
 
+_BOOL_COLS_SET = frozenset({"is_active", "is_correct", "shuffle_questions", "shuffle_options", "flagged"})
+
+
+def _fix_insert_bool_literals(sql: str) -> str:
+    """In INSERT INTO t (c1,c2,...) VALUES (v1,v2,...), replace literal 0/1 with FALSE/TRUE for boolean cols."""
+    m = re.match(
+        r"(INSERT\s+INTO\s+\w+\s*\()([^)]+)(\)\s+VALUES\s*\()(.+)(\)\s*)$",
+        sql, re.IGNORECASE | re.DOTALL,
+    )
+    if not m:
+        return sql
+    cols = [c.strip().lower() for c in m.group(2).split(",")]
+    # Split values on commas (naive – but VALUES list uses ? or literals, no commas inside strings here)
+    vals = [v.strip() for v in m.group(4).split(",")]
+    if len(cols) != len(vals):
+        return sql  # can't map safely
+    changed = False
+    for i, col in enumerate(cols):
+        if col in _BOOL_COLS_SET and i < len(vals):
+            if vals[i] == "1":
+                vals[i] = "TRUE"; changed = True
+            elif vals[i] == "0":
+                vals[i] = "FALSE"; changed = True
+    if not changed:
+        return sql
+    return m.group(1) + m.group(2) + m.group(3) + ", ".join(vals) + m.group(5)
+
+
 def _translate(sql: str) -> str:
     s = sql.strip()
 
@@ -58,6 +86,28 @@ def _translate(sql: str) -> str:
         s, flags=re.IGNORECASE,
     )
 
+    # 2b. IF COL_LENGTH < N BEGIN...END (column resize guard) → skip on fresh PG DB
+    s = re.sub(
+        r"IF\s+COL_LENGTH\s*\([^)]+\)\s*<\s*\d+\s+BEGIN.*?END",
+        "SELECT 1",  # no-op
+        s, flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    # 2c. IF EXISTS (SELECT 1 FROM sys.indexes … DROP INDEX X ON Y → DROP INDEX IF EXISTS X
+    s = re.sub(
+        r"IF\s+EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+sys\.indexes[^)]+\)\s+"
+        r"DROP\s+INDEX\s+(\w+)\s+ON\s+\w+",
+        r"DROP INDEX IF EXISTS \1",
+        s, flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    # 2d. DROP INDEX X ON Table → DROP INDEX IF EXISTS X
+    s = re.sub(
+        r"DROP\s+INDEX\s+(\w+)\s+ON\s+\w+",
+        r"DROP INDEX IF EXISTS \1",
+        s, flags=re.IGNORECASE,
+    )
+
     # 3. Data seed: IF NOT EXISTS (SELECT 1 … WHERE …) INSERT → INSERT … ON CONFLICT DO NOTHING
     s = re.sub(
         r"IF\s+NOT\s+EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+\w+\s+WHERE[^\)]+\)\s+"
@@ -66,11 +116,12 @@ def _translate(sql: str) -> str:
         s, flags=re.IGNORECASE | re.DOTALL,
     )
 
-    # 4. Remove sys.indexes guard (CREATE INDEX IF NOT EXISTS added below)
+    # 4. Remove sys.indexes guard (with optional AND NOT EXISTS clause) → CREATE INDEX IF NOT EXISTS below
     s = re.sub(
-        r"IF\s+NOT\s+EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+sys\.indexes\s+WHERE\s+name\s*=\s*'[^']+'\s*\)\s+",
+        r"IF\s+NOT\s+EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+sys\.indexes\s+WHERE\s+name\s*=\s*'[^']+'\s*\)"
+        r"(?:\s+AND\s+NOT\s+EXISTS\s*\((?:[^()]*|\([^()]*\))*\))?\s+",
         "",
-        s, flags=re.IGNORECASE,
+        s, flags=re.IGNORECASE | re.DOTALL,
     )
 
     # 5. CREATE [UNIQUE] INDEX → add IF NOT EXISTS
@@ -102,9 +153,9 @@ def _translate(sql: str) -> str:
     s = re.sub(r"\bBIT\s+NULL\b", "BOOLEAN NULL", s, flags=re.IGNORECASE)
     s = re.sub(r"\bBIT\b(?!\s*\()", "BOOLEAN", s, flags=re.IGNORECASE)
 
-    # 9. IDENTITY → SERIAL
+    # 9. IDENTITY → SERIAL (INT or BIGINT)
     s = re.sub(
-        r"\bINT\s+IDENTITY\s*\(\s*1\s*,\s*1\s*\)\s+NOT\s+NULL\s+PRIMARY\s+KEY",
+        r"\b(?:BIG)?INT\s+IDENTITY\s*\(\s*1\s*,\s*1\s*\)\s+NOT\s+NULL\s+PRIMARY\s+KEY",
         "BIGSERIAL NOT NULL PRIMARY KEY",
         s, flags=re.IGNORECASE,
     )
@@ -117,18 +168,74 @@ def _translate(sql: str) -> str:
         s = s.rstrip().rstrip(";").rstrip()
         s += f" LIMIT {limit_val}"
 
-    # 11. DATEADD(minute, n, col)
+    # 11. DATEADD(minute, n, col) — arg may be COALESCE(x, y) so allow one level of nested parens
+    _arg = r"(?:[^,()]+|\([^)]*\))+"
     s = re.sub(
-        r"DATEADD\s*\(\s*minute\s*,\s*([^,]+?)\s*,\s*([^)]+?)\s*\)",
+        r"DATEADD\s*\(\s*minute\s*,\s*(" + _arg + r")\s*,\s*(" + _arg + r")\s*\)",
         r"(\2 + (\1) * INTERVAL '1 minute')",
         s, flags=re.IGNORECASE,
     )
 
-    # 12. Parameter placeholders: escape literal % first, then ? → %s
+    # 12. Literal boolean comparisons in WHERE/SET: = 1 / = 0 for boolean cols → = TRUE / FALSE
+    _BOOL_COLS = r"(?:is_active|is_correct|shuffle_questions|shuffle_options|flagged)"
+    s = re.sub(r"(\b" + _BOOL_COLS + r"\b\s*=\s*)1\b", r"\1TRUE", s, flags=re.IGNORECASE)
+    s = re.sub(r"(\b" + _BOOL_COLS + r"\b\s*=\s*)0\b", r"\1FALSE", s, flags=re.IGNORECASE)
+
+    # 12b. INSERT INTO t (cols...) VALUES (..., literal 1/0 for boolean cols, ...)
+    s = _fix_insert_bool_literals(s)
+
+    # 13. Parameter placeholders: escape literal % first, then ? → %s
     s = s.replace("%", "%%")
     s = s.replace("?", "%s")
 
     return s
+
+
+# Known boolean column names — Python int 0/1 params for these get coerced to bool.
+_BOOL_COLUMN_NAMES = frozenset({
+    "is_active", "is_correct", "shuffle_questions", "shuffle_options", "flagged",
+})
+
+_BOOL_COL_RE = re.compile(
+    r"\b(" + "|".join(_BOOL_COLUMN_NAMES) + r")\b",
+    re.IGNORECASE,
+)
+
+
+def _adapt_params(sql: str, params: tuple | list) -> tuple | list | None:
+    """Convert Python int 0/1 to bool for boolean columns in INSERT/UPDATE statements."""
+    if not params:
+        return params or None
+
+    bool_positions: set[int] = set()
+
+    # INSERT INTO t (col1, col2, ...) VALUES (%s, %s, ...)
+    insert_m = re.search(
+        r"INSERT\s+INTO\s+\w+\s*\(([^)]+)\)\s+(?:SELECT\s+|VALUES\s*\()?",
+        sql, re.IGNORECASE,
+    )
+    if insert_m:
+        cols = [c.strip().lower() for c in insert_m.group(1).split(",")]
+        for i, col in enumerate(cols):
+            if col in _BOOL_COLUMN_NAMES:
+                bool_positions.add(i)
+
+    # UPDATE t SET col1=%s, col2=%s WHERE ...
+    # Match each "colname = %s" pair in the SET clause
+    for m in re.finditer(r"\b(\w+)\s*=\s*%s", sql, re.IGNORECASE):
+        col_name = m.group(1).lower()
+        if col_name in _BOOL_COLUMN_NAMES:
+            # Count which %s occurrence this is
+            idx = len(re.findall(r"%s", sql[:m.end()])) - 1
+            bool_positions.add(idx)
+
+    if not bool_positions:
+        return params
+    adapted = list(params)
+    for idx in bool_positions:
+        if idx < len(adapted) and type(adapted[idx]) is int:
+            adapted[idx] = bool(adapted[idx])
+    return adapted
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +249,8 @@ class _PGCursor:
         self._c = cursor
 
     def execute(self, sql: str, params=()):
-        self._c.execute(_translate(sql), params or None)
+        translated = _translate(sql)
+        self._c.execute(translated, _adapt_params(translated, params) or None)
 
     @property
     def description(self):
@@ -263,6 +371,9 @@ class PostgreSQLConnection:
                 cur.execute(sql, params)
                 cols = [d[0] for d in (cur.description or [])]
                 return [dict(zip(cols, (_as_utc(v) for v in row))) for row in cur.fetchall()]
+            except Exception:
+                self.connection.rollback()
+                raise
             finally:
                 cur.close()
 

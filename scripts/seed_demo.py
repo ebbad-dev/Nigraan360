@@ -45,10 +45,21 @@ def main() -> int:
     from core.security import hash_password
     from database.platform_repository import PlatformRepository
 
-    db = fastapi_app._get_db()
-    if not db or not db.is_active:
-        print("SQL Server is not reachable; configure PROCTORAI_DB_* first.")
-        return 2
+    database_url = os.environ.get("DATABASE_URL", "")
+    if database_url:
+        from database.pg_compat import PostgreSQLConnection
+        db = PostgreSQLConnection(database_url)
+        if not db.connect(max_retries=2):
+            print("PostgreSQL is not reachable; check DATABASE_URL.")
+            return 2
+        # Inject into fastapi_app so the TestClient reuses it
+        import infrastructure.api.fastapi_app as _fm
+        _fm._db_connection = db
+    else:
+        db = fastapi_app._get_db()
+        if not db or not db.is_active:
+            print("SQL Server is not reachable; configure PROCTORAI_DB_* first.")
+            return 2
     repo = PlatformRepository(db)
     for email, name, role, password in DEMO_USERS:
         existing = repo.get_user_by_email(email)
@@ -64,11 +75,16 @@ def main() -> int:
         token = client.post("/auth/login", json={"email": DEMO_USERS[1][0], "password": DEMO_USERS[1][3]}).json()["access_token"]
         h = {"Authorization": f"Bearer {token}"}
         exams = client.get("/exams", headers=h).json()
-        if any(exam.get("exam_code") == DEMO_EXAM_CODE for exam in exams):
-            print(f"exists  demo exam {DEMO_EXAM_CODE}")
+        existing_exam = next((e for e in exams if e.get("exam_code") == DEMO_EXAM_CODE), None)
+        if existing_exam and existing_exam.get("status") == "published":
+            print(f"exists  demo exam {DEMO_EXAM_CODE} (published)")
             return 0
         now = datetime.now(timezone.utc)
-        exam = client.post(
+        if existing_exam:
+            exam = existing_exam
+            print(f"reusing demo exam {DEMO_EXAM_CODE} (status={exam.get('status')})")
+        else:
+            exam = client.post(
             "/exams",
             headers=h,
             json={
