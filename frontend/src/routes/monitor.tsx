@@ -58,7 +58,7 @@ export const Route = createFileRoute("/monitor")({
   },
   head: () => ({
     meta: [
-      { title: "Live Monitoring · ProctorAI" },
+      { title: "Live Monitoring · Nigran 360" },
       {
         name: "description",
         content:

@@ -20,7 +20,7 @@ import { redirectForRole } from "@/lib/auth";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Sign in - ProctorAI" },
+      { title: "Sign in - Nigran 360" },
       {
         name: "description",
         content: "Secure AI-powered exam monitoring login for students and instructors.",
@@ -166,7 +166,7 @@ export function AuthShell({
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div>
-              <div className="text-xl font-semibold tracking-tight">ProctorAI</div>
+              <div className="text-xl font-semibold tracking-tight">Nigran 360</div>
               <div className="text-xs uppercase tracking-[0.28em] text-cyan-100/60">Integrity Intelligence</div>
             </div>
           </div>
@@ -213,7 +213,7 @@ export function AuthShell({
               <div>
                 <div className="text-xs uppercase tracking-[0.24em] text-cyan-100/60">Secure access</div>
                 <h2 className="mt-2 text-3xl font-semibold">{title}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-300">Use your registered ProctorAI account.</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">Use your registered Nigran 360 account.</p>
               </div>
               <div className="hidden shrink-0 sm:block">
                 <AnimatedShield size={86} />

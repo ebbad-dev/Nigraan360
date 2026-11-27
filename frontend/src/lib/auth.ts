@@ -16,7 +16,7 @@ export interface AuthSession {
   logged_in_at: string;
 }
 
-const KEY = "proctorai_auth";
+const KEY = "Nigran 360_auth";
 
 export function getAuthSession(): AuthSession | null {
   if (typeof window === "undefined") return null;
@@ -34,13 +34,13 @@ export function setAuthSession(session: Omit<AuthSession, "logged_in_at">) {
     KEY,
     JSON.stringify({ ...session, logged_in_at: new Date().toISOString() }),
   );
-  window.dispatchEvent(new Event("proctorai-auth-change"));
+  window.dispatchEvent(new Event("Nigran 360-auth-change"));
 }
 
 export function clearAuthSession() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(KEY);
-  window.dispatchEvent(new Event("proctorai-auth-change"));
+  window.dispatchEvent(new Event("Nigran 360-auth-change"));
 }
 
 export function authHeaders(): Record<string, string> {

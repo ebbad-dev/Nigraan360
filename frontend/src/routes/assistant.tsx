@@ -5,11 +5,11 @@ import { AssistantPanel } from "@/components/common/AssistantPanel";
 export const Route = createFileRoute("/assistant")({
   head: () => ({
     meta: [
-      { title: "ProctorAI Guide · Assistant" },
+      { title: "Nigran 360 Guide · Assistant" },
       {
         name: "description",
         content:
-          "Rule-based ProctorAI Guide for setup and review help. Does not answer exam questions.",
+          "Rule-based Nigran 360 Guide for setup and review help. Does not answer exam questions.",
       },
     ],
   }),

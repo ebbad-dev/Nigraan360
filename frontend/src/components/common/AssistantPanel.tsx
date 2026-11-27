@@ -29,7 +29,7 @@ export function AssistantPanel({ embedded, defaultOpen }: Props) {
       id: "m0",
       role: "assistant",
       content:
-        "Hi, I'm ProctorAI Guide. I help with platform setup, monitoring, and reviewing sessions — I can't help with exam content. What do you need?",
+        "Hi, I'm Nigran 360 Guide. I help with platform setup, monitoring, and reviewing sessions — I can't help with exam content. What do you need?",
       timestamp: new Date().toISOString(),
       quick_actions: defaultChips,
     },
@@ -144,7 +144,7 @@ function PanelBody({
           <Bot className="h-4 w-4" />
         </div>
         <div className="leading-tight">
-          <div className="text-sm font-semibold">ProctorAI Guide</div>
+          <div className="text-sm font-semibold">Nigran 360 Guide</div>
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
             Support only · won't answer exam questions
           </div>
@@ -200,7 +200,7 @@ function PanelBody({
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about ProctorAI..."
+          placeholder="Ask about Nigran 360..."
           className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
         <GlowButton type="submit" size="sm" disabled={!input.trim() || pending}>

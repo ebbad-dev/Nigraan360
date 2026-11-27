@@ -13,11 +13,11 @@ import { Chrome, FolderOpen, ShieldCheck, ShieldOff, Wifi, Zap } from "lucide-re
 export const Route = createFileRoute("/browser-guard")({
   head: () => ({
     meta: [
-      { title: "Browser Guard Setup · ProctorAI" },
+      { title: "Browser Guard Setup · Nigran 360" },
       {
         name: "description",
         content:
-          "Install and verify the ProctorAI Browser Guard extension for exact tab and URL tracking.",
+          "Install and verify the Nigran 360 Browser Guard extension for exact tab and URL tracking.",
       },
     ],
   }),
@@ -58,7 +58,7 @@ function BrowserGuardPage() {
               </h1>
               <p className="mt-2 max-w-xl text-sm text-muted-foreground">
                 Browser Guard enables exact tab and URL tracking during active exam sessions.
-                Without it, ProctorAI can only detect basic tab-switch events.
+                Without it, Nigran 360 can only detect basic tab-switch events.
               </p>
               <div className="mt-4 flex items-center gap-2">
                 <StatusBadge
@@ -90,7 +90,7 @@ function BrowserGuardPage() {
                 },
                 {
                   t: "Select Browser Guard",
-                  d: "Choose the browser_guard_extension folder inside this ProctorAI project.",
+                  d: "Choose the browser_guard_extension folder inside this Nigran 360 project.",
                   icon: Chrome,
                 },
                 {
@@ -98,7 +98,7 @@ function BrowserGuardPage() {
                   d: "Allow tab/URL access for exam sessions only.",
                   icon: ShieldCheck,
                 },
-                { t: "Test connection", d: "Verify ProctorAI receives the handshake.", icon: Zap },
+                { t: "Test connection", d: "Verify Nigran 360 receives the handshake.", icon: Zap },
               ].map((step, i) => (
                 <motion.li
                   key={step.t}

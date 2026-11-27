@@ -606,6 +606,43 @@ if _FASTAPI_AVAILABLE:
         )
     )
 
+    # ── Assessment service and router (question bank, monitoring, grading, results) ──
+    from infrastructure.api.routers.assessment import create_assessment_router
+    from reporting.academic_pdf import build_academic_pdf as _build_academic_pdf
+    from services.assessment_service import AssessmentService
+
+    _assessment_service = AssessmentService(
+        exams=_exam_service,
+        hash_password=__import__("core.security", fromlist=["hash_password"]).hash_password,
+        build_academic_pdf=_build_academic_pdf,
+    )
+    app.include_router(
+        create_assessment_router(
+            _assessment_service,
+            current_user=_current_user,
+            require_roles=_require_roles,
+            audit=_audit,
+            api_error=_api_error,
+        )
+    )
+
+    # ── Background expiry sweep (server-side attempt deadline enforcement) ────
+    import threading as _threading
+
+    def _expiry_sweep_loop() -> None:
+        import time as _time
+        while True:
+            _time.sleep(60)
+            try:
+                count = _exam_service.finalize_expired_attempts()
+                if count:
+                    log_event(_api_logger, "attempt.expiry_sweep", level="info", finalized=count)
+            except Exception as exc:
+                log_event(_api_logger, "attempt.expiry_sweep_error", level="warning", error=str(exc))
+
+    _sweep_thread = _threading.Thread(target=_expiry_sweep_loop, daemon=True, name="expiry-sweep")
+    _sweep_thread.start()
+
     @app.get("/dashboard/instructor")
     def instructor_dashboard(user: dict = Depends(_require_roles("instructor", "admin"))):
         return _repo().dashboard_metrics(_tenant_id(user))

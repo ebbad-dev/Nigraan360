@@ -49,12 +49,12 @@ def tenant_id(user: dict | None = None) -> str:
 
 
 def format_exam(row: dict) -> dict:
-    rules = row.get("rules_json") or row.get("rules") or {}
-    if isinstance(rules, str):
+    exam_rules = row.get("rules_json") or row.get("rules") or {}
+    if isinstance(exam_rules, str):
         try:
-            rules = json.loads(rules)
+            exam_rules = json.loads(exam_rules)
         except Exception:
-            rules = {"policy": rules}
+            exam_rules = {"policy": exam_rules}
     return {
         "id": row.get("exam_id"),
         "exam_id": row.get("exam_id"),
@@ -70,7 +70,7 @@ def format_exam(row: dict) -> dict:
         "start_time": iso(row.get("start_time")) if row.get("start_time") else None,
         "end_time": iso(row.get("end_time")) if row.get("end_time") else None,
         "status": row.get("status") or "draft",
-        "rules": rules,
+        "rules": exam_rules,
         "assignment_id": row.get("assignment_id"),
         "assignment_status": row.get("assignment_status"),
         "assignment_count": int(row.get("assignment_count") or 0),

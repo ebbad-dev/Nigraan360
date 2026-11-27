@@ -43,7 +43,7 @@ export const Route = createFileRoute("/instructor")({
   }),
   head: () => ({
     meta: [
-      { title: "Instructor Dashboard · ProctorAI" },
+      { title: "Instructor Dashboard · Nigran 360" },
       {
         name: "description",
         content: "Enterprise dashboard for proctoring sessions, risk distribution, and reviews.",
@@ -444,9 +444,21 @@ function ExamManagement() {
                     {exam.exam_code || "No code"} · {exam.duration_minutes} min · {exam.assignment_count ?? 0} assigned
                   </div>
                 </div>
-                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs capitalize">
-                  {exam.status ?? "draft"}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs capitalize">
+                    {exam.status ?? "draft"}
+                  </span>
+                  {exam.status === "published" && (
+                    <Link
+                      to="/exam-results/$examId"
+                      params={{ examId: exam.id }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[10px] text-primary hover:text-primary/80 underline"
+                    >
+                      Results &amp; Analytics
+                    </Link>
+                  )}
+                </div>
               </div>
             </button>
           ))}

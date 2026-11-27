@@ -12,7 +12,7 @@ import { useSaveSettings, useSettings } from "@/lib/queries";
 export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
-      { title: "Settings · ProctorAI" },
+      { title: "Settings · Nigran 360" },
       {
         name: "description",
         content: "Configure strictness, Browser Guard, sensitivities, and risk thresholds.",

@@ -466,6 +466,7 @@ class SessionLifecycleApiTests(unittest.TestCase):
             "status": "submitted",
             "score": 7,
             "max_score": 10,
+            "snapshot_json": '{"version": 1, "questions": []}',
         }
 
         class FakeRepository:

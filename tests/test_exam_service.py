@@ -22,6 +22,12 @@ from services.exam_service import (
 class ActiveDatabase:
     is_active = True
 
+    def query(self, _sql: str, _params: tuple = ()) -> list[dict]:
+        return []
+
+    def execute(self, _sql: str, _params: tuple = ()) -> int:
+        return 0
+
 
 def make_service(repository, **overrides) -> ExamService:
     values = {
@@ -199,6 +205,7 @@ class AttemptConcurrencyTests(unittest.TestCase):
         self.assertEqual(repository.active_user_checks, 2)
 
     def test_concurrent_submit_loser_is_returned_as_an_idempotent_replay(self) -> None:
+        from datetime import timezone as _tz
         attempt = {
             "attempt_id": "attempt_1",
             "tenant_id": "tenant_1",
@@ -207,17 +214,25 @@ class AttemptConcurrencyTests(unittest.TestCase):
             "status": "in_progress",
             "score": 0,
             "max_score": 10,
+            "snapshot_json": '{"version": 1, "questions": []}',
+            # results_published_at makes the score visible to the candidate
+            "results_published_at": datetime(2026, 7, 16, 12, 1, tzinfo=_tz.utc),
+            "grading_status": "graded",
         }
 
         class RaceRepository:
+            def __init__(self) -> None:
+                self._state = dict(attempt)
+
             def get_attempt(self, _attempt_id: str) -> dict:
-                return attempt
+                return dict(self._state)
 
             def submit_attempt(self, _attempt_id: str) -> dict:
+                # Simulate the idempotent replay: attempt was already submitted by the
+                # race winner; this call just returns the current submitted state.
+                self._state.update({"status": "submitted", "score": 8})
                 return {
-                    **attempt,
-                    "status": "submitted",
-                    "score": 8,
+                    **self._state,
                     "idempotent_replay": True,
                 }
 

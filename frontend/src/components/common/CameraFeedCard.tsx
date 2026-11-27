@@ -78,7 +78,7 @@ export function CameraFeedCard({
           <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-3 text-[10px] uppercase text-muted-foreground">
             <span>{resolution}</span>
             <span>
-              ProctorAI -{" "}
+              Nigran 360 -{" "}
               {new Date().toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",

@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { AuthShell, Field } from "./login";
 
 export const Route = createFileRoute("/forgot-password")({
-  head: () => ({ meta: [{ title: "Forgot password - ProctorAI" }] }),
+  head: () => ({ meta: [{ title: "Forgot password - Nigran 360" }] }),
   component: ForgotPasswordPage,
 });
 

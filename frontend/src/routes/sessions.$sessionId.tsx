@@ -21,7 +21,7 @@ import { FileText, ScanFace, DoorOpen, Check, XCircle, AlertTriangle, Trash2 } f
 export const Route = createFileRoute("/sessions/$sessionId")({
   head: () => ({
     meta: [
-      { title: "Session Review · ProctorAI" },
+      { title: "Session Review · Nigran 360" },
       {
         name: "description",
         content: "Detailed session review with risk contributors, evidence, and decision tools.",
@@ -263,7 +263,7 @@ function SessionReviewPage() {
             </p>
           )}
           <p className="mt-3 rounded-lg border border-white/10 bg-white/5 p-2.5 text-[11px] text-muted-foreground">
-            ProctorAI provides risk analysis and evidence. Instructor decision required for final
+            Nigran 360 provides risk analysis and evidence. Instructor decision required for final
             academic outcome.
           </p>
         </GlassCard>

@@ -30,7 +30,7 @@ import {
 export const Route = createFileRoute("/setup")({
   head: () => ({
     meta: [
-      { title: "Setup Wizard · ProctorAI" },
+      { title: "Setup Wizard · Nigran 360" },
       {
         name: "description",
         content:

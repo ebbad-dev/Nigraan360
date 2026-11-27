@@ -17,7 +17,7 @@ export const Route = createFileRoute("/exam")({
   }),
   head: () => ({
     meta: [
-      { title: "Secure Exam - ProctorAI" },
+      { title: "Secure Exam - Nigran 360" },
       { name: "description", content: "Browser-native monitored exam workspace." },
     ],
   }),
@@ -64,14 +64,14 @@ function ExamRunnerPage() {
       .then(({ token, session_id }) => {
         if (cancelled) return;
         window.postMessage(
-          { type: "PROCTORAI_BROWSER_GUARD_TOKEN", token, session_id },
+          { type: "Nigran 360_BROWSER_GUARD_TOKEN", token, session_id },
           window.location.origin,
         );
       })
       .catch((exc) => setSubmitError(exc instanceof Error ? exc.message : "Could not start protected exam monitoring."));
     return () => {
       cancelled = true;
-      window.postMessage({ type: "PROCTORAI_BROWSER_GUARD_CLEAR" }, window.location.origin);
+      window.postMessage({ type: "Nigran 360_BROWSER_GUARD_CLEAR" }, window.location.origin);
     };
   }, [attempt.data?.session_id, attempt.data?.user_id, attempt.data?.exam.exam_code, attempt.data?.exam_id]);
 

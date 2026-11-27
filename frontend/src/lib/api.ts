@@ -761,4 +761,134 @@ export const api = {
     if (!sessionId || !token) return null;
     return `${VIDEO_BASE_URL}${endpoints.cameraStream("", source)}?token=${encodeURIComponent(token)}`;
   },
+
+  // ── Assessment: Question bank ─────────────────────────────────────────────
+
+  async listBankQuestions(filters: { category?: string; difficulty?: string; question_type?: string; search?: string } = {}): Promise<any> {
+    const params = new URLSearchParams();
+    if (filters.category) params.set("category", filters.category);
+    if (filters.difficulty) params.set("difficulty", filters.difficulty);
+    if (filters.question_type) params.set("question_type", filters.question_type);
+    if (filters.search) params.set("search", filters.search);
+    return http<any>(`/bank/questions?${params}`);
+  },
+
+  async createBankQuestion(data: any): Promise<any> {
+    return http<any>("/bank/questions", { method: "POST", body: JSON.stringify(data) });
+  },
+
+  async updateBankQuestion(id: string, data: any): Promise<any> {
+    return http<any>(`/bank/questions/${id}`, { method: "PUT", body: JSON.stringify(data) });
+  },
+
+  async deleteBankQuestion(id: string): Promise<any> {
+    return http<any>(`/bank/questions/${id}`, { method: "DELETE" });
+  },
+
+  async assignBankQuestions(examId: string, questionIds: string[]): Promise<any> {
+    return http<any>(`/exams/${examId}/bank/assign`, { method: "POST", body: JSON.stringify({ question_ids: questionIds }) });
+  },
+
+  // ── Assessment: Candidate dashboard and results ───────────────────────────
+
+  async getCandidateDashboard(): Promise<any> {
+    return http<any>("/student/dashboard");
+  },
+
+  async getCandidateResults(): Promise<any[]> {
+    return http<any[]>("/student/results");
+  },
+
+  // ── Assessment: Announcements ─────────────────────────────────────────────
+
+  async createAnnouncement(examId: string, data: { body: string; audience?: string }): Promise<any> {
+    return http<any>(`/exams/${examId}/announcements`, { method: "POST", body: JSON.stringify(data) });
+  },
+
+  async listAnnouncements(examId: string): Promise<any[]> {
+    return http<any[]>(`/exams/${examId}/announcements`);
+  },
+
+  async withdrawAnnouncement(examId: string, announcementId: string): Promise<any> {
+    return http<any>(`/exams/${examId}/announcements/${announcementId}`, { method: "DELETE" });
+  },
+
+  async getCandidateAnnouncements(): Promise<any[]> {
+    return http<any[]>("/student/announcements");
+  },
+
+  // ── Assessment: Live monitoring ───────────────────────────────────────────
+
+  async getLiveMonitor(examId: string): Promise<any> {
+    return http<any>(`/exams/${examId}/monitor`);
+  },
+
+  // ── Assessment: Grading ───────────────────────────────────────────────────
+
+  async getGradingQueue(examId: string): Promise<any[]> {
+    return http<any[]>(`/exams/${examId}/grading`);
+  },
+
+  async gradeResponse(responseId: string, data: { awarded_marks?: number; feedback?: string; is_correct?: boolean }): Promise<any> {
+    return http<any>(`/responses/${responseId}/grade`, { method: "POST", body: JSON.stringify(data) });
+  },
+
+  // ── Assessment: Results ───────────────────────────────────────────────────
+
+  async getExamResults(examId: string): Promise<any> {
+    return http<any>(`/exams/${examId}/results`);
+  },
+
+  async publishExamResults(examId: string, publish = true): Promise<any> {
+    return http<any>(`/exams/${examId}/results/publish`, { method: "POST", body: JSON.stringify({ publish }) });
+  },
+
+  // ── Assessment: Analytics ─────────────────────────────────────────────────
+
+  async getExamAnalytics(examId: string): Promise<any> {
+    return http<any>(`/exams/${examId}/analytics`);
+  },
+
+  // ── Assessment: Academic PDF report ──────────────────────────────────────
+
+  async downloadAcademicReport(attemptId: string): Promise<void> {
+    const res = await fetch(`${API_BASE_URL}/attempts/${attemptId}/report`, {
+      headers: { ...authHeaders() },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error((data as any)?.message || `Report download failed: ${res.status}`);
+    }
+    const disposition = res.headers.get("content-disposition") || "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    const filename = match?.[1] || `report_${attemptId}.pdf`;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+  },
+
+  async verifyReport(token: string): Promise<any> {
+    return http<any>(`/reports/verify/${token}`);
+  },
+
+  // ── Assessment: Bulk import ───────────────────────────────────────────────
+
+  async importCandidates(examId: string, content: string, fileFormat: string, commit: boolean): Promise<any> {
+    return http<any>(`/exams/${examId}/import/candidates`, {
+      method: "POST",
+      body: JSON.stringify({ content, file_format: fileFormat, commit }),
+    });
+  },
+
+  async importQuestions(content: string, fileFormat: string, commit: boolean): Promise<any> {
+    return http<any>("/bank/import/questions", {
+      method: "POST",
+      body: JSON.stringify({ content, file_format: fileFormat, commit }),
+    });
+  },
 };

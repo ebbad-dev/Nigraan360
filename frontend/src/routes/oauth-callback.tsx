@@ -5,7 +5,7 @@ import { redirectForRole, setAuthSession, type AuthSession } from "@/lib/auth";
 import { AuthShell } from "./login";
 
 export const Route = createFileRoute("/oauth-callback")({
-  head: () => ({ meta: [{ title: "Completing sign in - ProctorAI" }] }),
+  head: () => ({ meta: [{ title: "Completing sign in - Nigran 360" }] }),
   component: OAuthCallbackPage,
 });
 

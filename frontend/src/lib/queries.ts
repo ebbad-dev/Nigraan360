@@ -27,6 +27,16 @@ export const qk = {
   browserGuard: ["browser-guard"] as const,
   proctorStatus: ["proctor-status"] as const,
   camera: (source: "primary" | "secondary") => ["camera", source] as const,
+  // Assessment
+  bankQuestions: (filters?: Record<string, string>) => ["bank-questions", filters ?? {}] as const,
+  candidateDashboard: ["candidate-dashboard"] as const,
+  candidateResults: ["candidate-results"] as const,
+  candidateAnnouncements: ["candidate-announcements"] as const,
+  examAnnouncements: (examId: string) => ["exam", examId, "announcements"] as const,
+  liveMonitor: (examId: string) => ["exam", examId, "monitor"] as const,
+  gradingQueue: (examId: string) => ["exam", examId, "grading"] as const,
+  examResults: (examId: string) => ["exam", examId, "results"] as const,
+  examAnalytics: (examId: string) => ["exam", examId, "analytics"] as const,
 };
 
 export function useHealth() {
@@ -434,6 +444,174 @@ export function useSubmitReview(id: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.session(id) });
       qc.invalidateQueries({ queryKey: qk.sessions });
+    },
+  });
+}
+
+// ── Assessment hooks ──────────────────────────────────────────────────────────
+
+export function useBankQuestions(filters: Record<string, string> = {}) {
+  return useQuery({
+    queryKey: qk.bankQuestions(filters),
+    queryFn: () => api.listBankQuestions(filters),
+  });
+}
+
+export function useCreateBankQuestion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => api.createBankQuestion(data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["bank-questions"] }); },
+  });
+}
+
+export function useUpdateBankQuestion(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => api.updateBankQuestion(id, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["bank-questions"] }); },
+  });
+}
+
+export function useDeleteBankQuestion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteBankQuestion(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["bank-questions"] }); },
+  });
+}
+
+export function useAssignBankQuestions(examId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (questionIds: string[]) => api.assignBankQuestions(examId, questionIds),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: qk.examQuestions(examId) }); },
+  });
+}
+
+export function useCandidateDashboard() {
+  return useQuery({
+    queryKey: qk.candidateDashboard,
+    queryFn: () => api.getCandidateDashboard(),
+  });
+}
+
+export function useCandidateResults() {
+  return useQuery({
+    queryKey: qk.candidateResults,
+    queryFn: () => api.getCandidateResults(),
+  });
+}
+
+export function useCandidateAnnouncements() {
+  return useQuery({
+    queryKey: qk.candidateAnnouncements,
+    queryFn: () => api.getCandidateAnnouncements(),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useExamAnnouncements(examId: string) {
+  return useQuery({
+    queryKey: qk.examAnnouncements(examId),
+    queryFn: () => api.listAnnouncements(examId),
+    enabled: !!examId,
+  });
+}
+
+export function useCreateAnnouncement(examId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { body: string; audience?: string }) => api.createAnnouncement(examId, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: qk.examAnnouncements(examId) }); },
+  });
+}
+
+export function useWithdrawAnnouncement(examId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (announcementId: string) => api.withdrawAnnouncement(examId, announcementId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: qk.examAnnouncements(examId) }); },
+  });
+}
+
+export function useLiveMonitor(examId: string) {
+  return useQuery({
+    queryKey: qk.liveMonitor(examId),
+    queryFn: () => api.getLiveMonitor(examId),
+    enabled: !!examId,
+    refetchInterval: 15_000,
+  });
+}
+
+export function useGradingQueue(examId: string) {
+  return useQuery({
+    queryKey: qk.gradingQueue(examId),
+    queryFn: () => api.getGradingQueue(examId),
+    enabled: !!examId,
+  });
+}
+
+export function useGradeResponse(examId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ responseId, data }: { responseId: string; data: any }) =>
+      api.gradeResponse(responseId, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: qk.gradingQueue(examId) }); },
+  });
+}
+
+export function useExamResults(examId: string) {
+  return useQuery({
+    queryKey: qk.examResults(examId),
+    queryFn: () => api.getExamResults(examId),
+    enabled: !!examId,
+  });
+}
+
+export function usePublishExamResults(examId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (publish: boolean) => api.publishExamResults(examId, publish),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.examResults(examId) });
+      qc.invalidateQueries({ queryKey: qk.instructorExams });
+    },
+  });
+}
+
+export function useExamAnalytics(examId: string) {
+  return useQuery({
+    queryKey: qk.examAnalytics(examId),
+    queryFn: () => api.getExamAnalytics(examId),
+    enabled: !!examId,
+  });
+}
+
+export function useDownloadAcademicReport() {
+  return useMutation({
+    mutationFn: (attemptId: string) => api.downloadAcademicReport(attemptId),
+  });
+}
+
+export function useImportCandidates(examId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ content, fileFormat, commit }: { content: string; fileFormat: string; commit: boolean }) =>
+      api.importCandidates(examId, content, fileFormat, commit),
+    onSuccess: (_data, vars) => {
+      if (vars.commit) qc.invalidateQueries({ queryKey: qk.examAssignments(examId) });
+    },
+  });
+}
+
+export function useImportQuestions() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ content, fileFormat, commit }: { content: string; fileFormat: string; commit: boolean }) =>
+      api.importQuestions(content, fileFormat, commit),
+    onSuccess: (_data, vars) => {
+      if (vars.commit) qc.invalidateQueries({ queryKey: ["bank-questions"] });
     },
   });
 }

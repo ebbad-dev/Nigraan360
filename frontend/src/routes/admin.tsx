@@ -19,7 +19,7 @@ import type { AdminUser, Tenant } from "@/lib/types";
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin Console - ProctorAI" },
+      { title: "Admin Console - Nigran 360" },
       {
         name: "description",
         content: "Manage institutions, users, and security audit activity.",

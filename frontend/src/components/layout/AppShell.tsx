@@ -16,6 +16,9 @@ import {
   ListChecks,
   Rows3,
   Rows4,
+  BookOpen,
+  GraduationCap,
+  BarChart2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "@/components/common/CommandPalette";
@@ -27,8 +30,10 @@ import { api } from "@/lib/api";
 
 const nav = [
   { to: "/monitor", label: "Live Monitor", icon: Activity, roles: ["instructor", "admin"] },
-  { to: "/instructor", label: "Instructor", icon: Users, roles: ["instructor", "admin"] },
-  { to: "/setup", label: "Setup Wizard", icon: ListChecks, roles: ["student", "admin"] },
+  { to: "/instructor", label: "Examiner Dashboard", icon: Users, roles: ["instructor", "admin"] },
+  { to: "/bank", label: "Question Bank", icon: BookOpen, roles: ["instructor", "admin"] },
+  { to: "/candidate", label: "My Exams", icon: GraduationCap, roles: ["student"] },
+  { to: "/setup", label: "Exam Setup", icon: ListChecks, roles: ["student", "admin"] },
   { to: "/checklist", label: "Secure Checklist", icon: ClipboardCheck, roles: ["student", "admin"] },
   { to: "/id-verification", label: "ID Verification", icon: ScanFace, roles: ["student", "admin"] },
   { to: "/room-scan", label: "Room Scan", icon: DoorOpen, roles: ["student", "admin"] },
@@ -73,7 +78,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (!checked) {
     return (
       <div className="grid min-h-screen place-items-center bg-background text-sm text-muted-foreground">
-        Loading ProctorAI...
+        Loading Nigran 360...
       </div>
     );
   }
@@ -115,7 +120,7 @@ function Sidebar({ role }: { role?: Role }) {
           <ShieldCheck className="h-5 w-5 text-primary-foreground" aria-hidden />
         </div>
         <div className="leading-tight">
-          <div className="font-semibold">ProctorAI</div>
+          <div className="font-semibold">Nigran 360</div>
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
             Integrity OS
           </div>
@@ -170,7 +175,7 @@ function TopBar() {
       <Link
         to="/"
         className="md:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-lg"
-        aria-label="ProctorAI home"
+        aria-label="Nigran 360 home"
       >
         <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-primary">
           <ShieldCheck className="h-4 w-4 text-primary-foreground" aria-hidden />

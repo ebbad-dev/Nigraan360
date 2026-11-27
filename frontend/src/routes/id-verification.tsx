@@ -10,7 +10,7 @@ import { Camera, IdCard, ShieldCheck } from "lucide-react";
 export const Route = createFileRoute("/id-verification")({
   head: () => ({
     meta: [
-      { title: "ID Verification - ProctorAI" },
+      { title: "ID Verification - Nigran 360" },
       { name: "description", content: "Capture your face and ID evidence for verification." },
     ],
   }),

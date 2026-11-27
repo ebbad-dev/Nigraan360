@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/room-scan")({
   head: () => ({
     meta: [
-      { title: "Room Scan - ProctorAI" },
+      { title: "Room Scan - Nigran 360" },
       { name: "description", content: "Capture your environment for exam setup review." },
     ],
   }),

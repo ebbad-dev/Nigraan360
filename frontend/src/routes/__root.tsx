@@ -72,26 +72,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ProctorAI" },
+      { title: "Nigran 360" },
       {
         name: "description",
         content:
-          "ProctorAI SecureView is a React frontend for AI-powered remote proctoring and exam integrity.",
+          "Nigran 360 — Secure Examination Management System for institutions and competition organizers.",
       },
-      { name: "author", content: "ProctorAI" },
-      { property: "og:title", content: "ProctorAI" },
+      { name: "author", content: "Nigran 360" },
+      { property: "og:title", content: "Nigran 360" },
       {
         property: "og:description",
         content:
-          "ProctorAI SecureView is a React frontend for AI-powered remote proctoring and exam integrity.",
+          "Nigran 360 — Secure Examination Management System for institutions and competition organizers.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "ProctorAI" },
+      { name: "twitter:title", content: "Nigran 360" },
       {
         name: "twitter:description",
         content:
-          "ProctorAI SecureView is a React frontend for AI-powered remote proctoring and exam integrity.",
+          "Nigran 360 — Secure Examination Management System for institutions and competition organizers.",
       },
     ],
     links: [

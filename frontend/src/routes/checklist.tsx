@@ -20,7 +20,7 @@ const statusMap = {
 export const Route = createFileRoute("/checklist")({
   head: () => ({
     meta: [
-      { title: "Secure Exam Checklist · ProctorAI" },
+      { title: "Secure Exam Checklist · Nigran 360" },
       {
         name: "description",
         content: "Verify camera, mic, Browser Guard, and network before starting your exam.",

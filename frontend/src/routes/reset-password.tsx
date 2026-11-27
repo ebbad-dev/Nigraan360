@@ -7,7 +7,7 @@ import { AuthShell, Field } from "./login";
 
 export const Route = createFileRoute("/reset-password")({
   validateSearch: (search: Record<string, unknown>) => ({ token: search.token as string | undefined }),
-  head: () => ({ meta: [{ title: "Reset password - ProctorAI" }] }),
+  head: () => ({ meta: [{ title: "Reset password - Nigran 360" }] }),
   component: ResetPasswordPage,
 });
 

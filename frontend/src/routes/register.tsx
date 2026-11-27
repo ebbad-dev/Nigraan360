@@ -7,7 +7,7 @@ import { redirectForRole } from "@/lib/auth";
 import { AuthShell, Field, GoogleAuthButton } from "./login";
 
 export const Route = createFileRoute("/register")({
-  head: () => ({ meta: [{ title: "Create student account - ProctorAI" }] }),
+  head: () => ({ meta: [{ title: "Create student account - Nigran 360" }] }),
   component: RegisterPage,
 });
 
@@ -38,7 +38,7 @@ function RegisterPage() {
   };
 
   return (
-    <AuthShell eyebrow="Student registration" title="Create your ProctorAI account">
+    <AuthShell eyebrow="Student registration" title="Create your Nigran 360 account">
       <form className="space-y-4" onSubmit={onSubmit}>
         <Field label="Full name" value={fullName} onChange={setFullName} autoComplete="name" />
         <Field label="Email address" value={email} onChange={setEmail} type="email" autoComplete="email" />

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 
 export type Density = "comfortable" | "compact";
-const KEY = "proctorai-density";
+const KEY = "Nigran 360-density";
 
 function read(): Density {
   if (typeof window === "undefined") return "comfortable";

@@ -23,11 +23,15 @@ import { Route as IdVerificationRouteImport } from './routes/id-verification'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ExamRouteImport } from './routes/exam'
 import { Route as ChecklistRouteImport } from './routes/checklist'
+import { Route as CandidateRouteImport } from './routes/candidate'
 import { Route as BrowserGuardRouteImport } from './routes/browser-guard'
+import { Route as BankRouteImport } from './routes/bank'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VerifyTokenRouteImport } from './routes/verify.$token'
 import { Route as SessionsSessionIdRouteImport } from './routes/sessions.$sessionId'
+import { Route as ExamResultsExamIdRouteImport } from './routes/exam-results.$examId'
 
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
@@ -99,9 +103,19 @@ const ChecklistRoute = ChecklistRouteImport.update({
   path: '/checklist',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CandidateRoute = CandidateRouteImport.update({
+  id: '/candidate',
+  path: '/candidate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BrowserGuardRoute = BrowserGuardRouteImport.update({
   id: '/browser-guard',
   path: '/browser-guard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BankRoute = BankRouteImport.update({
+  id: '/bank',
+  path: '/bank',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AssistantRoute = AssistantRouteImport.update({
@@ -119,9 +133,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VerifyTokenRoute = VerifyTokenRouteImport.update({
+  id: '/verify/$token',
+  path: '/verify/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SessionsSessionIdRoute = SessionsSessionIdRouteImport.update({
   id: '/sessions/$sessionId',
   path: '/sessions/$sessionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExamResultsExamIdRoute = ExamResultsExamIdRouteImport.update({
+  id: '/exam-results/$examId',
+  path: '/exam-results/$examId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -129,7 +153,9 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/assistant': typeof AssistantRoute
+  '/bank': typeof BankRoute
   '/browser-guard': typeof BrowserGuardRoute
+  '/candidate': typeof CandidateRoute
   '/checklist': typeof ChecklistRoute
   '/exam': typeof ExamRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -144,13 +170,17 @@ export interface FileRoutesByFullPath {
   '/room-scan': typeof RoomScanRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/exam-results/$examId': typeof ExamResultsExamIdRoute
   '/sessions/$sessionId': typeof SessionsSessionIdRoute
+  '/verify/$token': typeof VerifyTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/assistant': typeof AssistantRoute
+  '/bank': typeof BankRoute
   '/browser-guard': typeof BrowserGuardRoute
+  '/candidate': typeof CandidateRoute
   '/checklist': typeof ChecklistRoute
   '/exam': typeof ExamRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -165,14 +195,18 @@ export interface FileRoutesByTo {
   '/room-scan': typeof RoomScanRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/exam-results/$examId': typeof ExamResultsExamIdRoute
   '/sessions/$sessionId': typeof SessionsSessionIdRoute
+  '/verify/$token': typeof VerifyTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/assistant': typeof AssistantRoute
+  '/bank': typeof BankRoute
   '/browser-guard': typeof BrowserGuardRoute
+  '/candidate': typeof CandidateRoute
   '/checklist': typeof ChecklistRoute
   '/exam': typeof ExamRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -187,7 +221,9 @@ export interface FileRoutesById {
   '/room-scan': typeof RoomScanRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/exam-results/$examId': typeof ExamResultsExamIdRoute
   '/sessions/$sessionId': typeof SessionsSessionIdRoute
+  '/verify/$token': typeof VerifyTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -195,7 +231,9 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/assistant'
+    | '/bank'
     | '/browser-guard'
+    | '/candidate'
     | '/checklist'
     | '/exam'
     | '/forgot-password'
@@ -210,13 +248,17 @@ export interface FileRouteTypes {
     | '/room-scan'
     | '/settings'
     | '/setup'
+    | '/exam-results/$examId'
     | '/sessions/$sessionId'
+    | '/verify/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/assistant'
+    | '/bank'
     | '/browser-guard'
+    | '/candidate'
     | '/checklist'
     | '/exam'
     | '/forgot-password'
@@ -231,13 +273,17 @@ export interface FileRouteTypes {
     | '/room-scan'
     | '/settings'
     | '/setup'
+    | '/exam-results/$examId'
     | '/sessions/$sessionId'
+    | '/verify/$token'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/assistant'
+    | '/bank'
     | '/browser-guard'
+    | '/candidate'
     | '/checklist'
     | '/exam'
     | '/forgot-password'
@@ -252,14 +298,18 @@ export interface FileRouteTypes {
     | '/room-scan'
     | '/settings'
     | '/setup'
+    | '/exam-results/$examId'
     | '/sessions/$sessionId'
+    | '/verify/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   AssistantRoute: typeof AssistantRoute
+  BankRoute: typeof BankRoute
   BrowserGuardRoute: typeof BrowserGuardRoute
+  CandidateRoute: typeof CandidateRoute
   ChecklistRoute: typeof ChecklistRoute
   ExamRoute: typeof ExamRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -274,7 +324,9 @@ export interface RootRouteChildren {
   RoomScanRoute: typeof RoomScanRoute
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
+  ExamResultsExamIdRoute: typeof ExamResultsExamIdRoute
   SessionsSessionIdRoute: typeof SessionsSessionIdRoute
+  VerifyTokenRoute: typeof VerifyTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -377,11 +429,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChecklistRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/candidate': {
+      id: '/candidate'
+      path: '/candidate'
+      fullPath: '/candidate'
+      preLoaderRoute: typeof CandidateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/browser-guard': {
       id: '/browser-guard'
       path: '/browser-guard'
       fullPath: '/browser-guard'
       preLoaderRoute: typeof BrowserGuardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bank': {
+      id: '/bank'
+      path: '/bank'
+      fullPath: '/bank'
+      preLoaderRoute: typeof BankRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/assistant': {
@@ -405,11 +471,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/verify/$token': {
+      id: '/verify/$token'
+      path: '/verify/$token'
+      fullPath: '/verify/$token'
+      preLoaderRoute: typeof VerifyTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sessions/$sessionId': {
       id: '/sessions/$sessionId'
       path: '/sessions/$sessionId'
       fullPath: '/sessions/$sessionId'
       preLoaderRoute: typeof SessionsSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exam-results/$examId': {
+      id: '/exam-results/$examId'
+      path: '/exam-results/$examId'
+      fullPath: '/exam-results/$examId'
+      preLoaderRoute: typeof ExamResultsExamIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -419,7 +499,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AssistantRoute: AssistantRoute,
+  BankRoute: BankRoute,
   BrowserGuardRoute: BrowserGuardRoute,
+  CandidateRoute: CandidateRoute,
   ChecklistRoute: ChecklistRoute,
   ExamRoute: ExamRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
@@ -434,7 +516,9 @@ const rootRouteChildren: RootRouteChildren = {
   RoomScanRoute: RoomScanRoute,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
+  ExamResultsExamIdRoute: ExamResultsExamIdRoute,
   SessionsSessionIdRoute: SessionsSessionIdRoute,
+  VerifyTokenRoute: VerifyTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
