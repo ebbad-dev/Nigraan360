@@ -230,7 +230,7 @@ function MonitorPage() {
           <div className="space-y-4 xl:col-span-4">
             <GlassCard className="p-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Risk analysis</h3>
+                <h3 className="text-sm font-semibold">Signal level <span className="font-normal text-muted-foreground">(indicator for review, not evidence)</span></h3>
                 <span className="text-xs text-muted-foreground">
                   Updated {risk.data ? new Date(risk.data.updated_at).toLocaleTimeString() : "—"}
                 </span>
@@ -248,7 +248,7 @@ function MonitorPage() {
             </GlassCard>
 
             <GlassCard className="p-4">
-              <h3 className="mb-3 text-sm font-semibold">Top contributors</h3>
+              <h3 className="mb-3 text-sm font-semibold">Most frequent signals</h3>
               {risk.data ? (
                 <RiskContributorList items={risk.data.contributors} />
               ) : (

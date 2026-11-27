@@ -532,34 +532,40 @@ class AssessmentService:
             if not raw.is_integer() or raw < 0 or raw > max_marks:
                 _fail(422, "marks_out_of_range", f"Revised marks must be a whole number between 0 and {max_marks}.")
             revised_marks = int(raw)
-            updated = self._repo().set_response_marks(
-                dispute["attempt_id"],
-                dispute["question_id"],
-                awarded_marks=revised_marks,
-                graded_by=user["user_id"],
-                note=("Dispute decision: " + note)[:2000],
-            )
-            if not updated:
-                _fail(409, "no_response", "The candidate did not answer this question, so there are no marks to revise.")
-            response = self._repo().get_response(dispute["attempt_id"], dispute["question_id"]) or {}
-            if response.get("response_id"):
-                self._repo().record_grade_change(
-                    tenant_id=dispute.get("tenant_id") or tenant_id(user), response_id=response["response_id"],
-                    attempt_id=dispute["attempt_id"], exam_id=dispute["exam_id"],
-                    previous_marks=dispute.get("original_question_marks"), new_marks=revised_marks,
-                    previous_status=None, source="dispute", reason=note, changed_by=user["user_id"],
-                )
-        totals = self._repo().finalize_scores(dispute["attempt_id"])
-        closed = self._repo().decide_dispute(
-            dispute_id,
-            status=decision,
-            decision_note=note,
-            decided_by=user["user_id"],
-            revised_question_marks=revised_marks,
-            revised_score=totals["score"],
-        )
-        if not closed:
+        # Claim first: a concurrent second decision fails here, before it can touch any marks.
+        if not self._repo().claim_dispute(dispute_id):
             _fail(409, "dispute_closed", "This dispute has already been decided.")
+        try:
+            if revised_marks is not None:
+                updated = self._repo().set_response_marks(
+                    dispute["attempt_id"],
+                    dispute["question_id"],
+                    awarded_marks=revised_marks,
+                    graded_by=user["user_id"],
+                    note=("Dispute decision: " + note)[:2000],
+                )
+                if not updated:
+                    _fail(409, "no_response", "The candidate did not answer this question, so there are no marks to revise.")
+                response = self._repo().get_response(dispute["attempt_id"], dispute["question_id"]) or {}
+                if response.get("response_id"):
+                    self._repo().record_grade_change(
+                        tenant_id=dispute.get("tenant_id") or tenant_id(user), response_id=response["response_id"],
+                        attempt_id=dispute["attempt_id"], exam_id=dispute["exam_id"],
+                        previous_marks=dispute.get("original_question_marks"), new_marks=revised_marks,
+                        previous_status=None, source="dispute", reason=note, changed_by=user["user_id"],
+                    )
+            totals = self._repo().finalize_scores(dispute["attempt_id"])
+            self._repo().decide_dispute(
+                dispute_id,
+                status=decision,
+                decision_note=note,
+                decided_by=user["user_id"],
+                revised_question_marks=revised_marks,
+                revised_score=totals["score"],
+            )
+        except Exception:
+            self._repo().release_dispute(dispute_id)
+            raise
         return self._format_dispute(self._repo().get_dispute(dispute_id) or dispute, staff=True)
 
     # ── Academic reports and verification ────────────────────────────────────

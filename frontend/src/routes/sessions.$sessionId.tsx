@@ -84,7 +84,7 @@ function SessionReviewPage() {
             </div>
           </GlassCard>
           <GlassCard className="p-4 lg:col-span-2">
-            <h3 className="mb-3 text-sm font-semibold">Top contributors</h3>
+            <h3 className="mb-3 text-sm font-semibold">Most frequent signals</h3>
             <RiskContributorList items={data.risk.contributors} />
           </GlassCard>
         </div>

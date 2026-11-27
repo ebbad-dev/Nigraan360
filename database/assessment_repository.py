@@ -624,7 +624,7 @@ class AssessmentRepository:
             """
             UPDATE ResultDisputes
             SET status = ?, decision_note = ?, decided_by = ?, decided_at = ?, revised_question_marks = ?, revised_score = ?
-            WHERE dispute_id = ? AND status = 'open'
+            WHERE dispute_id = ? AND status = 'deciding'
             """,
             (status, decision_note, decided_by, utc_now(), revised_question_marks, revised_score, dispute_id),
         )
@@ -668,3 +668,10 @@ class AssessmentRepository:
             (awarded_marks, feedback or None, graded_by, utc_now(), utc_now(), response_id, expected_marks, expected_status or ""),
         )
         return bool(changed)
+
+    def claim_dispute(self, dispute_id: str) -> bool:
+        """Atomically move an open dispute to 'deciding' so only one decision can apply marks."""
+        return bool(self.db.execute("UPDATE ResultDisputes SET status = 'deciding' WHERE dispute_id = ? AND status = 'open'", (dispute_id,)))
+
+    def release_dispute(self, dispute_id: str) -> None:
+        self.db.execute("UPDATE ResultDisputes SET status = 'open' WHERE dispute_id = ? AND status = 'deciding'", (dispute_id,))

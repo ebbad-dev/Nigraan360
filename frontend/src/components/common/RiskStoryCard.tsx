@@ -58,7 +58,7 @@ export function RiskStoryCard({ risk, session, compact, className }: Props) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold">Risk story</h3>
+            <h3 className="text-sm font-semibold">Observed events summary</h3>
             <span className={cn("text-xs uppercase tracking-wider", tone)}>{levelLabel}</span>
           </div>
           <p
@@ -88,7 +88,7 @@ export function RiskStoryCard({ risk, session, compact, className }: Props) {
           </p>
           {!compact && (
             <p className="mt-2 text-xs text-muted-foreground">
-              Summary generated from risk contributors. Instructor decision required for final
+              Summary of observed signals. These are indicators for human review, not evidence of misconduct; an examiner decides any
               outcome.
             </p>
           )}
