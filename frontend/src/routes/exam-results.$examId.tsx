@@ -217,10 +217,13 @@ function ResultsTab({ examId }: { examId: string }) {
   );
 }
 
-function GradeRow({ item, examId }: { item: any; examId: string }) {
+function GradeRow({ item, examId, published }: { item: any; examId: string; published: boolean }) {
   const grade = useGradeResponse(examId);
   const [marks, setMarks] = useState<string>(item.grading_status === "pending_manual" ? "" : String(item.awarded_marks));
   const [feedback, setFeedback] = useState<string>(item.feedback || "");
+  const [reason, setReason] = useState("");
+  const graded = item.grading_status !== "pending_manual";
+  const amending = published && graded;
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
@@ -232,8 +235,20 @@ function GradeRow({ item, examId }: { item: any; examId: string }) {
       setError(`Enter a whole number from 0 to ${item.max_marks}.`);
       return;
     }
+    if (amending && reason.trim().length < 5) {
+      setError("Results are published. Give a reason (at least 5 characters) for amending this grade.");
+      return;
+    }
     try {
-      await grade.mutateAsync({ responseId: item.response_id, data: { awarded_marks: value, feedback } });
+      await grade.mutateAsync({
+        responseId: item.response_id,
+        data: {
+          awarded_marks: value,
+          feedback,
+          expected_previous_marks: graded ? item.awarded_marks : null,
+          amend_reason: amending ? reason.trim() : "",
+        },
+      });
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Grading failed.");
@@ -259,8 +274,13 @@ function GradeRow({ item, examId }: { item: any; examId: string }) {
         <label className="min-w-[12rem] flex-1 text-xs text-muted-foreground">Feedback (optional)
           <input className={cn(inputCls, "mt-1")} value={feedback} onChange={(e) => setFeedback(e.target.value)} maxLength={2000} />
         </label>
-        <GlowButton size="sm" onClick={submit} disabled={grade.isPending}>{item.grading_status === "pending_manual" ? "Save grade" : "Regrade"}</GlowButton>
+        <GlowButton size="sm" onClick={submit} disabled={grade.isPending}>{!graded ? "Save grade" : amending ? "Amend published grade" : "Regrade"}</GlowButton>
       </div>
+      {amending && (
+        <label className="block text-xs text-amber-200">Reason for amending a published result (recorded in the grade history)
+          <input className={cn(inputCls, "mt-1")} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={2000} aria-label="Reason for amendment" />
+        </label>
+      )}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {saved && <p role="status" className="text-sm text-emerald-300">Grade saved on the server; attempt total recalculated.</p>}
     </GlassCard>
@@ -269,6 +289,8 @@ function GradeRow({ item, examId }: { item: any; examId: string }) {
 
 function GradingTab({ examId }: { examId: string }) {
   const queue = useGradingQueue(examId);
+  const results = useExamResults(examId);
+  const published = Boolean(results.data?.published);
   if (queue.isLoading) return <LoadingSkeleton />;
   if (queue.isError) return <p role="alert" className="text-sm text-destructive">{(queue.error as Error).message}</p>;
   const items: any[] = queue.data ?? [];
@@ -276,7 +298,8 @@ function GradingTab({ examId }: { examId: string }) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">Objective questions are graded automatically when answers are saved. Only written responses appear here.</p>
-      {items.map((item) => <GradeRow key={item.response_id} item={item} examId={examId} />)}
+      {published && <p className="text-xs text-amber-200">Results are published: any change is an amendment, needs a reason and is recorded.</p>}
+      {items.map((item) => <GradeRow key={item.response_id} item={item} examId={examId} published={published} />)}
     </div>
   );
 }

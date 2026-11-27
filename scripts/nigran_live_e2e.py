@@ -241,6 +241,16 @@ def main() -> int:
             mine = body(c.get("/student/results", headers=h(ca)))
             step("3.8 corrected score visible to the candidate", any(x["attempt_id"] == attempt_id and x["score"] == 9 for x in mine))
             step("3.8 candidate sees the decision", any(x["status"] == "upheld" and x["decision_note"] for x in body(c.get("/student/disputes", headers=h(ca)))))
+            rid = item["response_id"]
+            no_reason = c.post(f"/responses/{rid}/grade", headers=h(ex), json={"awarded_marks": 4, "expected_previous_marks": 5})
+            step("3.7 regrading a published result without a reason is refused", no_reason.status_code == 409 and body(no_reason).get("error") == "results_published", no_reason.text[:200])
+            stale = c.post(f"/responses/{rid}/grade", headers=h(ex), json={"awarded_marks": 4, "expected_previous_marks": 2, "amend_reason": "Recheck after moderation"})
+            step("3.7 stale concurrent regrade is refused (grade_conflict)", stale.status_code == 409 and body(stale).get("error") == "grade_conflict", stale.text[:200])
+            amend = c.post(f"/responses/{rid}/grade", headers=h(ex), json={"awarded_marks": 4, "expected_previous_marks": 5, "amend_reason": "Moderation panel adjustment"})
+            step("3.7 amendment with a reason is applied and flagged", amend.status_code == 200 and body(amend).get("amended_after_publication") is True and body(amend).get("attempt_score") == 8, amend.text[:200])
+            hist = body(c.get(f"/responses/{rid}/history", headers=h(ex)))
+            step("3.7 grade history records grading, dispute and amendment", [x["source"] for x in hist][:3] == ["amendment", "dispute", "grading"], str(hist)[:300])
+            step("3.7 another examiner cannot read grade history", c.get(f"/responses/{rid}/history", headers=h(ex2)).status_code == 403)
             step("3.8 other candidate cannot read the attempt", c.get(f"/attempts/{attempt_id}", headers=h(ot)).status_code in (403, 404))
             step("3.8 other candidate cannot download the report", c.get(f"/attempts/{attempt_id}/report", headers=h(ot)).status_code in (403, 404))
 

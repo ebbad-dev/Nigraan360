@@ -192,3 +192,32 @@ def apply_disputes_schema(db: Any) -> None:
         CREATE UNIQUE INDEX UX_ResultDisputes_open ON ResultDisputes (attempt_id, question_id) WHERE status = 'open'
         """
     )
+
+
+def apply_grade_history_schema(db: Any) -> None:
+    """Append-only history of every manual grade change (migration 20261127_0004_grade_history)."""
+    db.execute(
+        """
+        IF OBJECT_ID('GradeHistory', 'U') IS NULL
+        CREATE TABLE GradeHistory (
+            history_id NVARCHAR(64) NOT NULL PRIMARY KEY,
+            tenant_id NVARCHAR(64) NOT NULL,
+            response_id NVARCHAR(64) NOT NULL,
+            attempt_id NVARCHAR(64) NOT NULL,
+            exam_id NVARCHAR(64) NOT NULL,
+            previous_marks INT NULL,
+            new_marks INT NOT NULL,
+            previous_status NVARCHAR(32) NULL,
+            source NVARCHAR(16) NOT NULL,
+            reason NVARCHAR(2000) NULL,
+            changed_by NVARCHAR(64) NOT NULL,
+            created_at DATETIME2 NOT NULL
+        )
+        """
+    )
+    db.execute(
+        """
+        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_GradeHistory_response')
+        CREATE INDEX IX_GradeHistory_response ON GradeHistory (response_id, created_at)
+        """
+    )

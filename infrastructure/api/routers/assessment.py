@@ -50,6 +50,8 @@ class GradeRequest(BaseModel):
     awarded_marks: Optional[float] = None
     feedback: str = ""
     is_correct: Optional[bool] = None
+    expected_previous_marks: Optional[int] = None
+    amend_reason: str = Field(default="", max_length=2000)
 
 
 class PublishResultsRequest(BaseModel):
@@ -192,6 +194,10 @@ def create_assessment_router(
         result = invoke(service.grade_response, response_id, req.model_dump(), user)
         audit("response.graded", actor=user, resource_type="response", resource_id=response_id, request=request)
         return result
+
+    @router.get("/responses/{response_id}/history")
+    def grade_history(response_id: str, user: dict = Depends(require_roles("instructor", "admin"))):
+        return invoke(service.grade_history, response_id, user)
 
     # ── Results ───────────────────────────────────────────────────────────────
 

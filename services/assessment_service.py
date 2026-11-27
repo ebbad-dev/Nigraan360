@@ -312,9 +312,47 @@ class AssessmentService:
         if marks < 0 or marks > int(question.get("marks") or 0):
             _fail(422, "marks_out_of_range", f"Awarded marks must be between 0 and {int(question.get('marks') or 0)}.")
         feedback = str(data.get("feedback") or "").strip()[:2000]
-        self._repo().grade_written(response_id, awarded_marks=marks, feedback=feedback, graded_by=user["user_id"])
+        current_marks = int(row.get("awarded_marks") or 0)
+        current_status = row.get("grading_status") or ""
+        expected = data.get("expected_previous_marks")
+        if expected is not None and current_status == rules.GRADE_MANUAL and int(expected) != current_marks:
+            _fail(409, "grade_conflict", f"This answer was regraded by someone else to {current_marks} marks. Reload before changing it.")
+        published = bool(self._repo().exam_extras(row["exam_id"]).get("results_published_at"))
+        reason = str(data.get("amend_reason") or "").strip()[:2000]
+        if published and current_status == rules.GRADE_MANUAL and not (5 <= len(reason) <= 2000):
+            _fail(409, "results_published", "Results are already published. Give a reason (5+ characters) to amend this grade; the change is recorded.")
+        applied = self._repo().grade_written_if_unchanged(
+            response_id, expected_marks=current_marks, expected_status=current_status,
+            awarded_marks=marks, feedback=feedback, graded_by=user["user_id"],
+        )
+        if not applied:
+            _fail(409, "grade_conflict", "This answer changed while you were grading it. Reload and try again.")
+        self._repo().record_grade_change(
+            tenant_id=row.get("tenant_id") or tenant_id(user), response_id=response_id, attempt_id=row["attempt_id"],
+            exam_id=row["exam_id"], previous_marks=current_marks if current_status == rules.GRADE_MANUAL else None,
+            new_marks=marks, previous_status=current_status, source="amendment" if published else "grading",
+            reason=reason, changed_by=user["user_id"],
+        )
         totals = self._repo().finalize_scores(row["attempt_id"])
-        return {"response_id": response_id, "awarded_marks": marks, "feedback": feedback, "attempt_id": row["attempt_id"], "attempt_score": totals["score"], "attempt_grading_status": totals["grading_status"], "previous_marks": int(row.get("awarded_marks") or 0), "regraded": row.get("grading_status") == rules.GRADE_MANUAL}
+        return {"response_id": response_id, "awarded_marks": marks, "feedback": feedback, "attempt_id": row["attempt_id"], "attempt_score": totals["score"], "attempt_grading_status": totals["grading_status"], "previous_marks": current_marks, "regraded": current_status == rules.GRADE_MANUAL, "amended_after_publication": published}
+
+    def grade_history(self, response_id: str, user: dict) -> list[dict]:
+        row = self._repo().get_response_by_id(response_id)
+        if not row:
+            _fail(404, "not_found", "Response not found.")
+        self._require_staff_exam(row["exam_id"], user)
+        return [
+            {
+                "history_id": h["history_id"],
+                "previous_marks": h.get("previous_marks"),
+                "new_marks": h.get("new_marks"),
+                "source": h.get("source"),
+                "reason": h.get("reason") or "",
+                "changed_by": h.get("changed_by_name") or "",
+                "created_at": iso(h.get("created_at")),
+            }
+            for h in self._repo().grade_history(response_id)
+        ]
 
     def exam_results(self, exam_id: str, user: dict) -> dict:
         exam = self._require_staff_exam(exam_id, user)
@@ -503,6 +541,14 @@ class AssessmentService:
             )
             if not updated:
                 _fail(409, "no_response", "The candidate did not answer this question, so there are no marks to revise.")
+            response = self._repo().get_response(dispute["attempt_id"], dispute["question_id"]) or {}
+            if response.get("response_id"):
+                self._repo().record_grade_change(
+                    tenant_id=dispute.get("tenant_id") or tenant_id(user), response_id=response["response_id"],
+                    attempt_id=dispute["attempt_id"], exam_id=dispute["exam_id"],
+                    previous_marks=dispute.get("original_question_marks"), new_marks=revised_marks,
+                    previous_status=None, source="dispute", reason=note, changed_by=user["user_id"],
+                )
         totals = self._repo().finalize_scores(dispute["attempt_id"])
         closed = self._repo().decide_dispute(
             dispute_id,

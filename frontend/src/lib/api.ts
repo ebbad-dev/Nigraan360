@@ -896,7 +896,7 @@ export const api = {
     return http<any[]>(`/exams/${examId}/grading`);
   },
 
-  async gradeResponse(responseId: string, data: { awarded_marks?: number; feedback?: string; is_correct?: boolean }): Promise<any> {
+  async gradeResponse(responseId: string, data: { awarded_marks?: number; feedback?: string; is_correct?: boolean; expected_previous_marks?: number | null; amend_reason?: string }): Promise<any> {
     return http<any>(`/responses/${responseId}/grade`, { method: "POST", body: JSON.stringify(data) });
   },
 

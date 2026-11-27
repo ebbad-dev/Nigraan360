@@ -64,7 +64,7 @@ class DatabaseConnection:
         apply_migrations(self, self.registered_migrations())
 
     def registered_migrations(self):
-        from database.nigran_schema import apply_disputes_schema, apply_nigran360_schema
+        from database.nigran_schema import apply_disputes_schema, apply_grade_history_schema, apply_nigran360_schema
         from database.schema_migrations import Migration
 
         return (
@@ -85,6 +85,12 @@ class DatabaseConnection:
                 description="Result disputes with traceable examiner decisions",
                 revision="disputes-v1",
                 apply=lambda: apply_disputes_schema(self),
+            ),
+            Migration(
+                migration_id="20261127_0004_grade_history",
+                description="Append-only grade change history for manual grading and amendments",
+                revision="grade-history-v1",
+                apply=lambda: apply_grade_history_schema(self),
             ),
         )
 

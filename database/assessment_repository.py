@@ -628,3 +628,43 @@ class AssessmentRepository:
             """,
             (status, decision_note, decided_by, utc_now(), revised_question_marks, revised_score, dispute_id),
         )
+
+    # ── Grade history ────────────────────────────────────────────────────────
+
+    def record_grade_change(self, *, tenant_id: str, response_id: str, attempt_id: str, exam_id: str,
+                            previous_marks: int | None, new_marks: int, previous_status: str | None,
+                            source: str, reason: str, changed_by: str) -> None:
+        self.db.execute(
+            """
+            INSERT INTO GradeHistory (history_id, tenant_id, response_id, attempt_id, exam_id, previous_marks, new_marks,
+                                      previous_status, source, reason, changed_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (new_id("grh"), tenant_id, response_id, attempt_id, exam_id, previous_marks, new_marks,
+             previous_status, source, reason or None, changed_by, utc_now()),
+        )
+
+    def grade_history(self, response_id: str) -> list[dict]:
+        return self.db.query(
+            """
+            SELECT h.history_id, h.previous_marks, h.new_marks, h.previous_status, h.source, h.reason, h.created_at,
+                   u.full_name AS changed_by_name
+            FROM GradeHistory h LEFT JOIN Users u ON u.user_id = h.changed_by
+            WHERE h.response_id = ? ORDER BY h.created_at DESC
+            """,
+            (response_id,),
+        )
+
+    def grade_written_if_unchanged(self, response_id: str, *, expected_marks: int, expected_status: str,
+                                   awarded_marks: int, feedback: str, graded_by: str) -> bool:
+        """Optimistic write: applies only if nobody changed the grade since it was read."""
+        changed = self.db.execute(
+            """
+            UPDATE StudentResponses
+            SET awarded_marks = ?, feedback = ?, graded_by = ?, graded_at = ?, grading_status = 'manually_graded',
+                is_correct = NULL, updated_at = ?
+            WHERE response_id = ? AND COALESCE(awarded_marks, 0) = ? AND COALESCE(grading_status, '') = ?
+            """,
+            (awarded_marks, feedback or None, graded_by, utc_now(), utc_now(), response_id, expected_marks, expected_status or ""),
+        )
+        return bool(changed)
