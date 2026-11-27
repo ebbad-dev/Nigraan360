@@ -67,7 +67,7 @@ export interface ExamQuestion {
   question_id: string;
   exam_id: string;
   question_text: string;
-  question_type: "mcq" | string;
+  question_type: "mcq" | "multiple_select" | "written" | string;
   marks: number;
   sort_order: number;
   status: string;
@@ -79,7 +79,10 @@ export interface ExamAttemptResponse {
   attempt_id: string;
   question_id: string;
   selected_option_id?: string | null;
+  selected_option_ids?: string[];
   response_text?: string | null;
+  flagged?: boolean;
+  client_seq?: number | null;
   is_correct?: boolean | null;
   awarded_marks: number;
   answered_at?: string;
@@ -96,6 +99,10 @@ export interface ExamAttempt {
   status: "in_progress" | "submitted" | string;
   started_at?: string | null;
   submitted_at?: string | null;
+  deadline_at?: string | null;
+  server_now?: string | null;
+  attempt_type?: "real" | "sandbox" | string;
+  results_visible?: boolean;
   score: number;
   max_score: number;
   risk_score?: number;

@@ -24,17 +24,62 @@ import type {
   Tenant,
 } from "./types";
 
+export interface AttemptSavePayload {
+  question_id: string;
+  selected_option_id?: string;
+  selected_option_ids?: string[];
+  response_text?: string;
+  kind?: "answer" | "flag";
+  flagged?: boolean;
+  mutation_id?: string;
+  client_seq?: number;
+}
+
+export interface AttemptSaveResult {
+  status: "saved" | "duplicate" | "stale";
+  question_id: string;
+  selected_option_id?: string | null;
+  selected_option_ids?: string[];
+  response_text?: string | null;
+  flagged?: boolean;
+  client_seq?: number | null;
+  saved_at?: string;
+}
+
+export class ApiError extends Error {
+  status: number;
+  code: string;
+  network: boolean;
+  constructor(message: string, opts: { status?: number; code?: string; network?: boolean } = {}) {
+    super(message);
+    this.name = "ApiError";
+    this.status = opts.status ?? 0;
+    this.code = opts.code ?? "";
+    this.network = Boolean(opts.network);
+  }
+}
+
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-      ...(init?.headers ?? {}),
-    },
-    ...init,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(),
+        ...(init?.headers ?? {}),
+      },
+    });
+  } catch {
+    throw new ApiError("The Nigran 360 server could not be reached.", { network: true });
+  }
   const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
+  let data: any = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
   if (!res.ok) {
     if (res.status === 401) {
       clearAuthSession();
@@ -43,7 +88,11 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
       }
     }
     const message = data?.message || data?.detail || `API ${res.status}: ${res.statusText}`;
-    throw new Error(message);
+    throw new ApiError(typeof message === "string" ? message : `API ${res.status}`, {
+      status: res.status,
+      code: data?.error || "",
+      network: res.status === 502 || res.status === 503 || res.status === 504,
+    });
   }
   return data as T;
 }
@@ -140,6 +189,10 @@ function mapBackendAttempt(raw: any): ExamAttempt {
     status: raw.status || "in_progress",
     started_at: raw.started_at,
     submitted_at: raw.submitted_at,
+    deadline_at: raw.deadline_at ?? null,
+    server_now: raw.server_now ?? null,
+    attempt_type: raw.attempt_type || "real",
+    results_visible: Boolean(raw.results_visible),
     score: Number(raw.score || 0),
     max_score: Number(raw.max_score || 0),
     risk_score: Number(raw.risk_score || 0),
@@ -163,7 +216,10 @@ function mapBackendAttempt(raw: any): ExamAttempt {
       attempt_id: response.attempt_id,
       question_id: response.question_id,
       selected_option_id: response.selected_option_id,
+      selected_option_ids: response.selected_option_ids ?? [],
       response_text: response.response_text,
+      flagged: Boolean(response.flagged),
+      client_seq: response.client_seq ?? null,
       is_correct: response.is_correct,
       awarded_marks: Number(response.awarded_marks || 0),
       answered_at: response.answered_at,
@@ -472,7 +528,7 @@ export const api = {
     return mapBackendAttempt(raw);
   },
 
-  async saveAttemptResponse(id: string, input: { question_id: string; selected_option_id?: string; response_text?: string }) {
+  async saveAttemptResponse(id: string, input: AttemptSavePayload): Promise<AttemptSaveResult> {
     return http<any>(endpoints.attemptResponses(id), {
       method: "POST",
       body: JSON.stringify(input),
