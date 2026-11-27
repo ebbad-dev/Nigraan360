@@ -41,8 +41,9 @@ class AssignBankRequest(BaseModel):
 
 
 class AnnouncementRequest(BaseModel):
+    title: str = ""
     body: str
-    audience: str = "all"
+    priority: str = "normal"
 
 
 class GradeRequest(BaseModel):
@@ -139,7 +140,7 @@ def create_assessment_router(
         return result
 
     @router.get("/exams/{exam_id}/announcements")
-    def list_exam_announcements(exam_id: str, user: dict = Depends(require_roles("instructor", "admin"))):
+    def list_exam_announcements(exam_id: str, user: dict = Depends(current_user)):
         return invoke(service.list_exam_announcements, exam_id, user)
 
     @router.delete("/exams/{exam_id}/announcements/{announcement_id}")
@@ -214,7 +215,8 @@ def create_assessment_router(
     @router.get("/attempts/{attempt_id}/report")
     def academic_report(attempt_id: str, request: Request, user: dict = Depends(current_user)):
         from fastapi.responses import Response as FResponse
-        verify_base = str(request.base_url).rstrip("/")
+        from config.settings import FRONTEND_URL
+        verify_base = FRONTEND_URL
         pdf_bytes, filename = invoke(service.academic_report, attempt_id, user, verify_base)
         return FResponse(
             content=pdf_bytes,

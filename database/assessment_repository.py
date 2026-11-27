@@ -269,7 +269,7 @@ class AssessmentRepository:
         existing = self.get_response(attempt_id, question_id)
         now = utc_now()
         if existing:
-            sets = ["updated_at = ?", "client_seq = ?", "last_mutation_id = ?"]
+            sets = ["updated_at = ?", "client_seq = COALESCE(?, client_seq)", "last_mutation_id = ?"]
             params: list[Any] = [now, client_seq, mutation_id or None]
             if answer is not None and grade is not None:
                 sets += ["selected_option_id = ?", "selected_option_ids_json = ?", "response_text = ?", "is_correct = ?", "awarded_marks = ?", "grading_status = ?"]

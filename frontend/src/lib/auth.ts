@@ -49,7 +49,7 @@ export function authHeaders(): Record<string, string> {
 }
 
 export function redirectForRole(role?: Role): string {
-  if (role === "student") return "/setup";
+  if (role === "student") return "/candidate";
   if (role === "instructor") return "/instructor";
   if (role === "admin") return "/admin";
   return "/login";
@@ -62,6 +62,9 @@ export function roleCanAccess(role: Role | undefined, pathname: string): boolean
   if (role === "instructor") {
     return [
       "/instructor",
+      "/bank",
+      "/exam-results",
+      "/exam",
       "/monitor",
       "/sessions",
       "/reports",
@@ -70,6 +73,7 @@ export function roleCanAccess(role: Role | undefined, pathname: string): boolean
     ].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
   }
   return [
+    "/candidate",
     "/setup",
     "/checklist",
     "/id-verification",

@@ -48,6 +48,15 @@ def tenant_id(user: dict | None = None) -> str:
     return str((user or {}).get("tenant_id") or "tenant_default")
 
 
+EXAM_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    "draft": {"draft", "scheduled", "published", "archived"},
+    "scheduled": {"scheduled", "draft", "published", "closed", "archived"},
+    "published": {"published", "draft", "closed"},
+    "closed": {"closed", "archived"},
+    "archived": {"archived", "draft"},
+}
+
+
 def format_exam(row: dict) -> dict:
     exam_rules = row.get("rules_json") or row.get("rules") or {}
     if isinstance(exam_rules, str):
@@ -341,9 +350,22 @@ class ExamService:
         return format_exam(self._exam_with_extras(row))
 
     def update_exam(self, exam_id: str, data: dict, user: dict) -> dict:
-        self.require_management_access(exam_id, user)
+        current = self.require_management_access(exam_id, user)
         repo = self.repository_provider()
+        current_status = ((current or {}).get("status") or "draft").lower()
+        if not data.get("status"):
+            data = {**data, "status": current_status}
         payload = self.validate_exam_payload(data)
+        if payload["status"] not in EXAM_STATUS_TRANSITIONS.get(current_status, {current_status}):
+            self._fail(
+                409,
+                "invalid_status_transition",
+                f"An exam cannot move from {current_status} to {payload['status']}.",
+            )
+        if payload["status"] == "published" and current_status != "published":
+            end_time = payload.get("end_time") or (current or {}).get("end_time")
+            if end_time and parse_datetime(end_time) <= self.now():
+                self._fail(422, "validation_error", "The exam window has already ended. Update the schedule before publishing.")
         if payload["status"] in {"published", "scheduled"}:
             question_marks = self.validate_exam_content(
                 exam_id, int(payload.get("total_marks") or 0)

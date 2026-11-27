@@ -801,7 +801,7 @@ export const api = {
 
   // ── Assessment: Announcements ─────────────────────────────────────────────
 
-  async createAnnouncement(examId: string, data: { body: string; audience?: string }): Promise<any> {
+  async createAnnouncement(examId: string, data: { title: string; body: string; priority?: string }): Promise<any> {
     return http<any>(`/exams/${examId}/announcements`, { method: "POST", body: JSON.stringify(data) });
   },
 
@@ -870,6 +870,10 @@ export const api = {
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+  },
+
+  async startSandbox(examId: string): Promise<any> {
+    return http<any>(`/exams/${examId}/sandbox`, { method: "POST", body: JSON.stringify({}) });
   },
 
   async verifyReport(token: string): Promise<any> {

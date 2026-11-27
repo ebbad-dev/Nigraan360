@@ -465,10 +465,10 @@ export function useCreateBankQuestion() {
   });
 }
 
-export function useUpdateBankQuestion(id: string) {
+export function useUpdateBankQuestion() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => api.updateBankQuestion(id, data),
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.updateBankQuestion(id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["bank-questions"] }); },
   });
 }
@@ -522,7 +522,7 @@ export function useExamAnnouncements(examId: string) {
 export function useCreateAnnouncement(examId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { body: string; audience?: string }) => api.createAnnouncement(examId, data),
+    mutationFn: (data: { title: string; body: string; priority?: string }) => api.createAnnouncement(examId, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: qk.examAnnouncements(examId) }); },
   });
 }
@@ -557,7 +557,11 @@ export function useGradeResponse(examId: string) {
   return useMutation({
     mutationFn: ({ responseId, data }: { responseId: string; data: any }) =>
       api.gradeResponse(responseId, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: qk.gradingQueue(examId) }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.gradingQueue(examId) });
+      qc.invalidateQueries({ queryKey: qk.examResults(examId) });
+      qc.invalidateQueries({ queryKey: qk.examAnalytics(examId) });
+    },
   });
 }
 

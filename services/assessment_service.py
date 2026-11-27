@@ -303,9 +303,12 @@ class AssessmentService:
         if not question or question.get("question_type") != "written":
             _fail(422, "validation_error", "Only written responses are graded manually.")
         try:
-            marks = int(data.get("awarded_marks"))
+            raw_marks = float(data.get("awarded_marks"))
         except (TypeError, ValueError):
             _fail(422, "validation_error", "Awarded marks must be a whole number.")
+        if not raw_marks.is_integer():
+            _fail(422, "validation_error", "Awarded marks must be a whole number.")
+        marks = int(raw_marks)
         if marks < 0 or marks > int(question.get("marks") or 0):
             _fail(422, "marks_out_of_range", f"Awarded marks must be between 0 and {int(question.get('marks') or 0)}.")
         feedback = str(data.get("feedback") or "").strip()[:2000]
@@ -541,6 +544,11 @@ class AssessmentService:
     def import_questions(self, content: str, file_format: str, commit: bool, user: dict) -> dict:
         rows = self._parse_rows(content, file_format)
         results = []
+        existing_texts = {
+            " ".join(str(item.get("question_text") or "").lower().split())
+            for item in self._repo().list_bank_questions(tenant_id(user), category="", difficulty="", question_type="", search="")
+        }
+        seen_texts: set[str] = set()
         for index, row in enumerate(rows, start=1):
             options = row.get("options")
             if isinstance(options, str) or options is None:
@@ -566,6 +574,12 @@ class AssessmentService:
             except rules.AssessmentError as exc:
                 errors.append(exc.message)
                 validated = None
+            key = " ".join(str(payload["question_text"]).lower().split())
+            if key and key in seen_texts:
+                errors.append("Duplicate of an earlier row in this file.")
+            elif key and key in existing_texts:
+                errors.append("This question already exists in your question bank.")
+            seen_texts.add(key)
             results.append({"row": index, "question_text": str(payload["question_text"])[:120], "question_type": payload["question_type"], "errors": errors, "_payload": validated})
         valid = [row for row in results if not row["errors"]]
         summary = {"rows": len(results), "valid": len(valid), "invalid": len(results) - len(valid), "committed": False}

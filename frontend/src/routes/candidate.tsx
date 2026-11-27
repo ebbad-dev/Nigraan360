@@ -3,93 +3,73 @@ import { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlowButton } from "@/components/common/GlowButton";
-import { StatusBadge } from "@/components/common/StatusBadge";
 import { LoadingSkeleton } from "@/components/common/States";
-import { useCandidateDashboard, useCandidateResults, useCandidateAnnouncements, useStartAttempt } from "@/lib/queries";
-import { Calendar, Clock, FileText, Megaphone, Award, BookOpen, ChevronRight, Download } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useCandidateDashboard, useStartAttempt } from "@/lib/queries";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { Award, BookOpen, Calendar, ChevronRight, Clock, Download, Megaphone, PlayCircle } from "lucide-react";
 
 export const Route = createFileRoute("/candidate")({
   head: () => ({
     meta: [
       { title: "My Exams · Nigran 360" },
-      { name: "description", content: "Candidate exam dashboard for Nigran 360." },
+      { name: "description", content: "Candidate examination dashboard for Nigran 360." },
     ],
   }),
   component: CandidatePage,
 });
 
-function lifecycleColor(lc: string) {
-  if (lc === "upcoming") return "bg-blue-500/20 text-blue-300";
-  if (lc === "open") return "bg-green-500/20 text-green-300";
-  if (lc === "closed" || lc === "expired") return "bg-zinc-500/20 text-zinc-400";
-  if (lc === "results_available") return "bg-purple-500/20 text-purple-300";
-  return "bg-zinc-500/20 text-zinc-400";
-}
+type Group = "available" | "in_progress" | "upcoming" | "completed" | "closed";
 
-function lifecycleLabel(lc: string) {
-  if (lc === "upcoming") return "Upcoming";
-  if (lc === "open") return "Open — Take Exam";
-  if (lc === "closed") return "Closed";
-  if (lc === "expired") return "Expired";
-  if (lc === "results_available") return "Results Available";
-  return lc;
+const GROUPS: { key: Group; label: string; tone: string }[] = [
+  { key: "in_progress", label: "In progress", tone: "bg-amber-500/15 text-amber-300" },
+  { key: "available", label: "Available now", tone: "bg-emerald-500/15 text-emerald-300" },
+  { key: "upcoming", label: "Upcoming", tone: "bg-sky-500/15 text-sky-300" },
+  { key: "completed", label: "Completed", tone: "bg-violet-500/15 text-violet-300" },
+  { key: "closed", label: "Closed", tone: "bg-zinc-500/15 text-zinc-400" },
+];
+
+function fmt(value?: string | null) {
+  return value ? new Date(value).toLocaleString() : "—";
 }
 
 function CandidatePage() {
   const navigate = useNavigate();
   const dashboard = useCandidateDashboard();
-  const results = useCandidateResults();
-  const announcements = useCandidateAnnouncements();
   const startAttempt = useStartAttempt();
-  const [joining, setJoining] = useState<string | null>(null);
-  const [joinCode, setJoinCode] = useState("");
-  const [joinError, setJoinError] = useState("");
-  const [activeTab, setActiveTab] = useState<"exams" | "results" | "announcements">("exams");
+  const [tab, setTab] = useState<"exams" | "results" | "announcements">("exams");
+  const [startingExam, setStartingExam] = useState<string | null>(null);
+  const [rollNumber, setRollNumber] = useState("");
+  const [startError, setStartError] = useState("");
+  const [downloadError, setDownloadError] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const exams: any[] = dashboard.data?.assigned_exams ?? [];
-  const resultList: any[] = results.data ?? [];
-  const announcementList: any[] = announcements.data ?? [];
+  const groups: Record<Group, any[]> = dashboard.data?.groups ?? { available: [], in_progress: [], upcoming: [], completed: [], closed: [] };
+  const results: any[] = dashboard.data?.results ?? [];
+  const announcements: any[] = dashboard.data?.announcements ?? [];
+  const totalExams = GROUPS.reduce((sum, g) => sum + (groups[g.key]?.length ?? 0), 0);
 
-  async function handleJoinByCode() {
-    if (!joinCode.trim()) return;
-    setJoinError("");
+  async function beginExam(examId: string) {
+    setStartError("");
+    if (rollNumber.trim().length < 2) {
+      setStartError("Enter your official university roll number to start.");
+      return;
+    }
     try {
-      const res: any = await api.joinExamByCode(joinCode.trim());
-      if (res?.attempt_id) {
-        navigate({ to: "/exam", search: { attempt_id: res.attempt_id } });
-      }
-    } catch (err: any) {
-      setJoinError(err.message || "Invalid code or not eligible.");
+      const attempt = await startAttempt.mutateAsync({ exam_id: examId, roll_number: rollNumber.trim(), session_id: "" });
+      navigate({ to: "/exam", search: { attempt_id: attempt.attempt_id } });
+    } catch (err) {
+      setStartError(err instanceof Error ? err.message : "Could not start the exam.");
     }
   }
 
-  async function handleStartExam(examId: string, assignmentId?: string) {
-    setJoining(examId);
-    try {
-      const attempt = await startAttempt.mutateAsync({
-        exam_id: examId,
-        roll_number: "",
-        session_id: "",
-      });
-      if (attempt?.attempt_id) {
-        navigate({ to: "/exam", search: { attempt_id: attempt.attempt_id } });
-      }
-    } catch (err: any) {
-      console.error(err);
-    } finally {
-      setJoining(null);
-    }
-  }
-
-  async function handleDownloadReport(attemptId: string) {
+  async function downloadReport(attemptId: string) {
+    setDownloadError("");
     setDownloadingId(attemptId);
     try {
       await api.downloadAcademicReport(attemptId);
-    } catch (err: any) {
-      console.error(err);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "Report download failed.");
     } finally {
       setDownloadingId(null);
     }
@@ -97,187 +77,171 @@ function CandidatePage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">My Exams</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Assigned examinations, results and announcements</p>
-          </div>
-          <div className="flex gap-2">
-            <input
-              className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Enter exam code…"
-              value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleJoinByCode()}
-            />
-            <GlowButton onClick={handleJoinByCode} className="text-xs px-3 py-1.5">Join by Code</GlowButton>
-          </div>
+      <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">My Exams</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Your assigned examinations, published results and examiner announcements.
+          </p>
         </div>
-        {joinError && <p className="text-sm text-destructive">{joinError}</p>}
 
-        {/* Stats row */}
-        {dashboard.data && (
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { label: "Assigned", value: exams.length, icon: BookOpen },
-              { label: "Results Available", value: exams.filter((e: any) => e.lifecycle === "results_available").length, icon: Award },
-              { label: "Announcements", value: announcementList.length, icon: Megaphone },
-            ].map(({ label, value, icon: Icon }) => (
-              <GlassCard key={label} className="p-4 flex items-center gap-3">
-                <Icon className="h-5 w-5 text-primary" />
-                <div>
-                  <div className="text-xl font-bold text-foreground">{value}</div>
-                  <div className="text-xs text-muted-foreground">{label}</div>
-                </div>
-              </GlassCard>
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { label: "Assigned exams", value: totalExams, icon: BookOpen },
+            { label: "Published results", value: results.filter((r) => r.published).length, icon: Award },
+            { label: "Announcements", value: announcements.length, icon: Megaphone },
+          ].map(({ label, value, icon: Icon }) => (
+            <GlassCard key={label} className="flex items-center gap-3 p-4">
+              <Icon className="h-5 w-5 text-primary" aria-hidden />
+              <div>
+                <div className="text-xl font-bold text-foreground">{dashboard.isLoading ? "…" : value}</div>
+                <div className="text-xs text-muted-foreground">{label}</div>
+              </div>
+            </GlassCard>
+          ))}
+        </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 border-b border-border">
-          {(["exams", "results", "announcements"] as const).map((tab) => (
+        <div role="tablist" className="flex gap-1 border-b border-border">
+          {(["exams", "results", "announcements"] as const).map((key) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={key}
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => setTab(key)}
               className={cn(
-                "px-4 py-2 text-sm font-medium capitalize transition-colors",
-                activeTab === tab
-                  ? "border-b-2 border-primary text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                "px-4 py-2 text-sm font-medium transition-colors",
+                tab === key ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {tab === "exams" ? "My Exams" : tab === "results" ? "My Results" : "Announcements"}
-              {tab === "announcements" && announcementList.length > 0 && (
-                <span className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                  {announcementList.length}
-                </span>
-              )}
+              {key === "exams" ? "Examinations" : key === "results" ? "My Results" : `Announcements (${announcements.length})`}
             </button>
           ))}
         </div>
 
-        {/* Exams tab */}
-        {activeTab === "exams" && (
-          <div className="space-y-3">
+        {dashboard.isError && (
+          <GlassCard className="p-4 text-sm text-destructive">
+            Could not load your dashboard: {(dashboard.error as Error)?.message}
+          </GlassCard>
+        )}
+
+        {tab === "exams" && (
+          <div className="space-y-6">
             {dashboard.isLoading && <LoadingSkeleton />}
-            {!dashboard.isLoading && exams.length === 0 && (
+            {!dashboard.isLoading && totalExams === 0 && (
               <GlassCard className="p-8 text-center text-muted-foreground">
-                No exams assigned yet. Use an exam code to join one.
+                No examinations are assigned to you yet. Your examiner enrols you before an exam opens.
               </GlassCard>
             )}
-            {exams.map((exam: any) => (
-              <GlassCard key={exam.exam_id || exam.id} className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-foreground truncate">{exam.title}</h3>
-                      <span className="text-xs text-muted-foreground font-mono">{exam.exam_code}</span>
-                      <span className={cn("text-xs rounded-full px-2 py-0.5 font-medium", lifecycleColor(exam.lifecycle))}>
-                        {lifecycleLabel(exam.lifecycle)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{exam.description}</p>
-                    <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                      {exam.duration_minutes && (
-                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{exam.duration_minutes} min</span>
-                      )}
-                      {exam.start_time && (
-                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(exam.start_time).toLocaleString()}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2 items-end">
-                    {exam.lifecycle === "open" && (
-                      <GlowButton
-                        onClick={() => handleStartExam(exam.exam_id || exam.id, exam.assignment_id)}
-                        disabled={joining === (exam.exam_id || exam.id)}
-                        className="text-xs px-3 py-1.5"
-                      >
-                        {joining === (exam.exam_id || exam.id) ? "Starting…" : "Take Exam"}
-                        <ChevronRight className="h-3 w-3 ml-1" />
-                      </GlowButton>
-                    )}
-                    {exam.active_attempt_id && (
-                      <GlowButton
-                        onClick={() => navigate({ to: "/exam", search: { attempt_id: exam.active_attempt_id } })}
-                        className="text-xs px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/30"
-                      >
-                        Resume Exam
-                      </GlowButton>
-                    )}
-                  </div>
-                </div>
-              </GlassCard>
-            ))}
-          </div>
-        )}
-
-        {/* Results tab */}
-        {activeTab === "results" && (
-          <div className="space-y-3">
-            {results.isLoading && <LoadingSkeleton />}
-            {!results.isLoading && resultList.length === 0 && (
-              <GlassCard className="p-8 text-center text-muted-foreground">No results published yet.</GlassCard>
-            )}
-            {resultList.map((r: any) => (
-              <GlassCard key={r.attempt_id} className="p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-foreground">{r.exam_title}</h3>
-                      <span className="text-xs font-mono text-muted-foreground">{r.exam_code}</span>
-                    </div>
-                    <div className="flex gap-4 mt-1 text-sm">
-                      <span className="text-foreground font-bold">
-                        {r.score} / {r.max_score}
-                        {r.max_score > 0 && (
-                          <span className="text-muted-foreground font-normal ml-1">
-                            ({Math.round((r.score / r.max_score) * 100)}%)
-                          </span>
+            {GROUPS.filter((g) => groups[g.key]?.length).map((g) => (
+              <section key={g.key} className="space-y-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{g.label}</h2>
+                {groups[g.key].map((exam: any) => (
+                  <GlassCard key={exam.exam_id} className="p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold text-foreground">{exam.title}</h3>
+                          {exam.exam_code && <span className="font-mono text-xs text-muted-foreground">{exam.exam_code}</span>}
+                          <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", g.tone)}>{g.label}</span>
+                        </div>
+                        {exam.instructions && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{exam.instructions}</p>}
+                        <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" aria-hidden />{exam.duration_minutes} min · {exam.total_marks} marks</span>
+                          {exam.start_time && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" aria-hidden />Opens {fmt(exam.start_time)}</span>}
+                          {exam.end_time && <span>Closes {fmt(exam.end_time)}</span>}
+                          {exam.attempt?.submitted_at && <span>Submitted {fmt(exam.attempt.submitted_at)}</span>}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        {g.key === "in_progress" && exam.attempt && (
+                          <GlowButton size="sm" onClick={() => navigate({ to: "/exam", search: { attempt_id: exam.attempt.attempt_id } })}>
+                            Resume exam <ChevronRight className="h-3 w-3" aria-hidden />
+                          </GlowButton>
                         )}
-                      </span>
-                      {r.grading_status === "graded" && (
-                        <span className="text-green-400 text-xs flex items-center gap-1">
-                          <Award className="h-3 w-3" /> Graded
-                        </span>
-                      )}
+                        {g.key === "available" && startingExam !== exam.exam_id && (
+                          <GlowButton size="sm" onClick={() => { setStartingExam(exam.exam_id); setStartError(""); }}>
+                            <PlayCircle aria-hidden /> Start exam
+                          </GlowButton>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <GlowButton
-                    onClick={() => handleDownloadReport(r.attempt_id)}
-                    disabled={downloadingId === r.attempt_id}
-                    className="text-xs px-3 py-1.5"
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    {downloadingId === r.attempt_id ? "Downloading…" : "Download Report"}
-                  </GlowButton>
+                    {g.key === "available" && startingExam === exam.exam_id && (
+                      <form
+                        className="mt-4 flex flex-wrap items-end gap-2 border-t border-border pt-4"
+                        onSubmit={(e) => { e.preventDefault(); beginExam(exam.exam_id); }}
+                      >
+                        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                          Official university roll number
+                          <input
+                            autoFocus
+                            value={rollNumber}
+                            onChange={(e) => setRollNumber(e.target.value)}
+                            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="e.g. FA23-BCS-001"
+                          />
+                        </label>
+                        <GlowButton size="sm" type="submit" disabled={startAttempt.isPending}>
+                          {startAttempt.isPending ? "Starting…" : "Confirm & start"}
+                        </GlowButton>
+                        <GlowButton size="sm" variant="ghost" type="button" onClick={() => setStartingExam(null)}>Cancel</GlowButton>
+                        <Link to="/setup" className="text-xs text-primary underline">Use proctored setup instead</Link>
+                        <p className="w-full text-xs text-muted-foreground">
+                          The timer starts on the server when you confirm and keeps running if you disconnect.
+                        </p>
+                        {startError && <p role="alert" className="w-full text-sm text-destructive">{startError}</p>}
+                      </form>
+                    )}
+                  </GlassCard>
+                ))}
+              </section>
+            ))}
+          </div>
+        )}
+
+        {tab === "results" && (
+          <div className="space-y-3">
+            {downloadError && <p role="alert" className="text-sm text-destructive">{downloadError}</p>}
+            {!dashboard.isLoading && results.length === 0 && (
+              <GlassCard className="p-8 text-center text-muted-foreground">You have no submitted examinations yet.</GlassCard>
+            )}
+            {results.map((r) => (
+              <GlassCard key={r.attempt_id} className="flex flex-wrap items-center justify-between gap-4 p-4">
+                <div>
+                  <h3 className="font-semibold text-foreground">{r.exam_title}</h3>
+                  <p className="text-xs text-muted-foreground">Submitted {fmt(r.submitted_at)}</p>
+                  {r.published ? (
+                    <p className="mt-1 text-sm font-bold text-foreground">
+                      {r.score} / {r.max_score} <span className="font-normal text-muted-foreground">({r.percentage}%)</span>
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-sm text-muted-foreground">{r.status_label}</p>
+                  )}
                 </div>
+                {r.published && (
+                  <GlowButton size="sm" variant="outline" onClick={() => downloadReport(r.attempt_id)} disabled={downloadingId === r.attempt_id}>
+                    <Download aria-hidden /> {downloadingId === r.attempt_id ? "Preparing…" : "Verified PDF report"}
+                  </GlowButton>
+                )}
               </GlassCard>
             ))}
           </div>
         )}
 
-        {/* Announcements tab */}
-        {activeTab === "announcements" && (
+        {tab === "announcements" && (
           <div className="space-y-3">
-            {announcements.isLoading && <LoadingSkeleton />}
-            {!announcements.isLoading && announcementList.length === 0 && (
-              <GlassCard className="p-8 text-center text-muted-foreground">No announcements.</GlassCard>
+            {!dashboard.isLoading && announcements.length === 0 && (
+              <GlassCard className="p-8 text-center text-muted-foreground">No announcements from your examiners.</GlassCard>
             )}
-            {announcementList.map((a: any) => (
-              <GlassCard key={a.announcement_id} className="p-4">
-                <div className="flex items-start gap-3">
-                  <Megaphone className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm text-foreground">{a.body}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {a.exam_title && <span className="font-medium">{a.exam_title} · </span>}
-                      {new Date(a.created_at).toLocaleString()}
-                    </p>
-                  </div>
+            {announcements.map((a) => (
+              <GlassCard key={a.announcement_id} className="flex items-start gap-3 p-4">
+                <Megaphone className={cn("mt-0.5 h-4 w-4 shrink-0", a.priority === "urgent" ? "text-destructive" : "text-primary")} aria-hidden />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {a.title}
+                    {a.priority !== "normal" && <span className="ml-2 text-xs uppercase text-amber-300">{a.priority}</span>}
+                  </p>
+                  <p className="text-sm text-foreground/90">{a.body}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{a.exam_title && `${a.exam_title} · `}{fmt(a.created_at)}</p>
                 </div>
               </GlassCard>
             ))}
