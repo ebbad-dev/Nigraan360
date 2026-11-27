@@ -69,7 +69,7 @@
     - Monitoring indicators are not evidence.
     - Answers not received by the server before the deadline do not count, by design.
 
-**Update (17:50 PKT):** the P0 items S1, S3, S4, R1–R3 and R5, plus the exam layout, brand and accessibility fixes, are implemented and verified. See the update table in the traceability document. 3.1 and 3.7 are now VERIFIED COMPLETE.
+**Update (18:10 PKT):** the P0 items S1, S3, S4, R1–R3 and R5, plus the exam layout, brand, accessibility fixes, account page, admin paging, and candidate question breakdown (L3), are implemented and verified. See the update table in the traceability document. 3.1 and 3.7 are now VERIFIED COMPLETE. All 11 Playwright tests pass.
 
 **Overall readiness:** **FUNCTIONALLY READY WITH KNOWN GAPS**, as a product. As a competition submission it is **NOT READY until it is deployed**, and deployment must finish before 20:00 PKT.
 

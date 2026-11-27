@@ -25,7 +25,7 @@ Each requirement gets exactly one status:
 
 "NOT VERIFIED" items inside a row are named explicitly.
 
-## Update after implementation (27 Nov, 17:50 PKT)
+## Update after implementation (27 Nov, 18:10 PKT)
 
 | Commit | What it resolved |
 |---|---|
@@ -35,17 +35,19 @@ Each requirement gets exactly one status:
 | `6d0b1ed` | H2/U-1/U-2 focused exam layout with skip link and sticky mobile timer; H3 brand and design tokens; M6/U-9 axe violations fixed; L6/L7 tiny text and decorative effects removed |
 | `89cfa1d` | M8 account page with password change; M5/U-13 admin paging |
 | `885f22d` | PDF brand mark |
+| `c0e836d` | L3 candidate question breakdown for published results (AnswerSheet toggle on My Results) |
 
 **Evidence:**
 - **U** 89 passed.
 - **L** 98/98.
 - **B** 11/11, including an axe WCAG 2.2 AA test with 0 serious or critical violations on login, examiner dashboard, question bank and candidate dashboard.
 
+**Note:** An intermittent 14–25 s stall on the admin page has been observed locally when test data is large and concurrent scripts run. Direct and concurrent curl calls take ~50 ms. Root cause not identified; likely lock contention under load. Not reproducible in the standard test sequence.
+
 **Still open:**
 - S2: token revocation on logout and a shorter token lifetime.
 - U-6/U-8: examiner workspace information architecture.
 - U-7: legacy monitor wording.
-- L3: candidate result detail view.
 - L1/R7: transactional import.
 - R6: dispute claim ordering.
 - Paper (light) appearance.
