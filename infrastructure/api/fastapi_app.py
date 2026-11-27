@@ -477,6 +477,14 @@ if _FASTAPI_AVAILABLE:
         if user.get("role") == "instructor":
             if not row.get("tenant_id") or row.get("tenant_id") != _tenant_id(user):
                 _api_error(403, "forbidden", "This session belongs to another institution.")
+            if db and db.is_active:
+                owners = db.query(
+                    "SELECT e.created_by FROM Sessions s JOIN Exams e ON e.exam_id = s.exam_id WHERE s.session_id = ?",
+                    (session_id,),
+                )
+                owner = owners[0].get("created_by") if owners else None
+                if owner and owner != user.get("user_id"):
+                    _api_error(403, "forbidden", "This session belongs to another examiner's exam.")
             return
         if not row.get("user_id") or row.get("user_id") != user.get("user_id"):
             _api_error(403, "forbidden", "You can only access your own sessions.")
@@ -1944,7 +1952,15 @@ if _FASTAPI_AVAILABLE:
         if user["role"] == "student":
             sessions = [s for s in sessions if s.get("user_id") == user["user_id"]]
         elif user["role"] == "instructor":
-            sessions = [s for s in sessions if (s.get("tenant_id") or "tenant_default") == _tenant_id(user)]
+            owners = {
+                row["exam_id"]: row.get("created_by")
+                for row in db.query("SELECT exam_id, created_by FROM Exams WHERE COALESCE(tenant_id, 'tenant_default') = ?", (_tenant_id(user),))
+            }
+            sessions = [
+                s for s in sessions
+                if (s.get("tenant_id") or "tenant_default") == _tenant_id(user)
+                and owners.get(s.get("exam_id")) in (None, user["user_id"])
+            ]
 
         # Convert datetime to string
         for s in sessions:

@@ -214,3 +214,24 @@ test("5.3 a network failure while checking the session does not sign the candida
   const stored = await page.evaluate(() => window.localStorage.getItem("Nigran 360_auth"));
   expect(stored).not.toBeNull();
 });
+
+test("5.3 a hung save request times out and is retried without a false 'saved'", async ({ page, request }) => {
+  const { exam, candidate, candidateEmail, password } = await setupExam(request);
+  const auth = { Authorization: `Bearer ${candidate.access_token}` };
+  const attempt = await (await request.post(`${API}/attempts/start`, { headers: auth, data: { exam_id: exam.id, roll_number: "UAT-HANG" } })).json();
+  await signInAs(page, candidateEmail, password);
+  let hung = 0;
+  await page.route("**/attempts/*/responses", async (route) => {
+    if (hung === 0) {
+      hung += 1;
+      return; // never answer the first save: simulates a stalled connection
+    }
+    await route.continue();
+  });
+  await page.goto(`/exam?attempt_id=${attempt.attempt_id}`);
+  await page.getByText("Islamabad", { exact: true }).click();
+  await expect(page.getByTestId("save-status")).toHaveText("Pending sync");
+  await expect(page.getByTestId("save-status")).toHaveText("Saved on server", { timeout: 30_000 });
+  const server = await (await request.get(`${API}/attempts/${attempt.attempt_id}`, { headers: auth })).json();
+  expect(server.responses.length).toBe(1);
+});

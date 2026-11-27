@@ -257,6 +257,10 @@ def main() -> int:
             sheet = body(c.get(f"/attempts/{attempt_id}", headers=h(ex)))
             step("3.8 examiner reviews the completed answer sheet with the key", len(sheet.get("responses", [])) == 3 and any(o.get("is_correct") for q in sheet["questions"] for o in q.get("options", [])))
             step("3.8 another examiner cannot open the answer sheet", c.get(f"/attempts/{attempt_id}", headers=h(ex2)).status_code == 403)
+            sess = attempt["session_id"]
+            step("S3 another examiner cannot open this candidate's proctoring session", c.get(f"/sessions/{sess}", headers=h(ex2)).status_code == 403)
+            step("S3 another examiner's session list excludes it", not any(x.get("session_id") == sess for x in body(c.get("/sessions", headers=h(ex2)))))
+            step("S3 owning examiner can open the session", c.get(f"/sessions/{sess}", headers=h(ex)).status_code == 200)
             analytics = body(c.get(f"/exams/{exam_id}/analytics", headers=h(ex)))
             step("4.5 question analytics from real attempts", analytics.get("sample_size") == 1 and len(analytics.get("questions", [])) == 3)
 

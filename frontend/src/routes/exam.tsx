@@ -248,6 +248,16 @@ function Workspace({ attempt }: { attempt: ExamAttempt }) {
 
   useBrowserEventFallback(sandbox || submittedOnServer ? "" : sessionId);
 
+  // Once the server has finalized the attempt nothing local can count, so don't leave answers on the device.
+  useEffect(() => {
+    if (!receipt && !submittedOnServer) return;
+    try {
+      window.localStorage.removeItem(`n360:outbox:v1:${attemptId}`);
+    } catch {
+      // Storage unavailable: nothing to clear.
+    }
+  }, [receipt, submittedOnServer, attemptId]);
+
   if (receipt || submittedOnServer) {
     const final = receipt ?? attempt;
     const answeredOnServer = final.responses.filter((row) => {

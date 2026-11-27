@@ -59,20 +59,29 @@ export class ApiError extends Error {
   }
 }
 
-async function http<T>(path: string, init?: RequestInit): Promise<T> {
+async function http<T>(path: string, init?: RequestInit & { timeoutMs?: number }): Promise<T> {
   let res: Response;
   const auth = authHeaders();
+  const { timeoutMs, ...requestInit } = init ?? {};
+  const controller = timeoutMs ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
     res = await fetch(`${API_BASE_URL}${path}`, {
-      ...init,
+      ...requestInit,
+      ...(controller ? { signal: controller.signal } : {}),
       headers: {
         "Content-Type": "application/json",
         ...auth,
-        ...(init?.headers ?? {}),
+        ...(requestInit.headers ?? {}),
       },
     });
   } catch {
-    throw new ApiError("The Nigran 360 server could not be reached.", { network: true });
+    throw new ApiError(
+      controller?.signal.aborted ? "The server did not respond in time." : "The Nigran 360 server could not be reached.",
+      { network: true },
+    );
+  } finally {
+    if (timer) clearTimeout(timer);
   }
   const text = await res.text();
   let data: any = {};
@@ -540,9 +549,11 @@ export const api = {
   },
 
   async saveAttemptResponse(id: string, input: AttemptSavePayload): Promise<AttemptSaveResult> {
+    // A hung request must not stall the outbox: time out and retry with the same mutation_id.
     return http<any>(endpoints.attemptResponses(id), {
       method: "POST",
       body: JSON.stringify(input),
+      timeoutMs: 10_000,
     });
   },
 
