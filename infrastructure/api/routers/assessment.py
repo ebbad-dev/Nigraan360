@@ -56,6 +56,18 @@ class PublishResultsRequest(BaseModel):
     publish: bool = True
 
 
+class DisputeRequest(BaseModel):
+    reason: str
+    explanation: str = Field(default="", max_length=2000)
+    question_id: str = Field(default="", max_length=64)
+
+
+class DisputeDecisionRequest(BaseModel):
+    decision: str
+    decision_note: str = Field(default="", max_length=2000)
+    revised_marks: Optional[float] = None
+
+
 class ImportRequest(BaseModel):
     content: str
     file_format: str = "csv"
@@ -235,6 +247,28 @@ def create_assessment_router(
     @router.get("/reports/verify/{token}")
     def verify_report(token: str):
         return invoke(service.verify_report, token)
+
+    # ── Result disputes ───────────────────────────────────────────────────────
+
+    @router.post("/attempts/{attempt_id}/disputes")
+    def create_dispute(attempt_id: str, req: DisputeRequest, request: Request, user: dict = Depends(require_roles("student"))):
+        result = invoke(service.create_dispute, attempt_id, req.model_dump(), user)
+        audit("dispute.created", actor=user, resource_type="attempt", resource_id=attempt_id, request=request)
+        return result
+
+    @router.get("/student/disputes")
+    def my_disputes(user: dict = Depends(require_roles("student"))):
+        return invoke(service.my_disputes, user)
+
+    @router.get("/exams/{exam_id}/disputes")
+    def exam_disputes(exam_id: str, user: dict = Depends(require_roles("instructor", "admin"))):
+        return invoke(service.exam_disputes, exam_id, user)
+
+    @router.post("/disputes/{dispute_id}/decision")
+    def decide_dispute(dispute_id: str, req: DisputeDecisionRequest, request: Request, user: dict = Depends(require_roles("instructor", "admin"))):
+        result = invoke(service.decide_dispute, dispute_id, req.model_dump(), user)
+        audit("dispute.decided", actor=user, resource_type="dispute", resource_id=dispute_id, request=request)
+        return result
 
     # ── Bulk import ───────────────────────────────────────────────────────────
 

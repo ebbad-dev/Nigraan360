@@ -152,3 +152,43 @@ def apply_nigran360_schema(db: Any) -> None:
             {sql}
             """
         )
+
+
+def apply_disputes_schema(db: Any) -> None:
+    """Result disputes with a traceable decision record (migration 20261127_0003_disputes)."""
+    db.execute(
+        """
+        IF OBJECT_ID('ResultDisputes', 'U') IS NULL
+        CREATE TABLE ResultDisputes (
+            dispute_id NVARCHAR(64) NOT NULL PRIMARY KEY,
+            tenant_id NVARCHAR(64) NOT NULL,
+            attempt_id NVARCHAR(64) NOT NULL,
+            exam_id NVARCHAR(64) NOT NULL,
+            user_id NVARCHAR(64) NOT NULL,
+            question_id NVARCHAR(64) NULL,
+            reason NVARCHAR(32) NOT NULL,
+            explanation NVARCHAR(2000) NOT NULL,
+            status NVARCHAR(16) NOT NULL DEFAULT 'open',
+            original_score INT NOT NULL,
+            original_question_marks INT NULL,
+            revised_question_marks INT NULL,
+            revised_score INT NULL,
+            decision_note NVARCHAR(2000) NULL,
+            decided_by NVARCHAR(64) NULL,
+            created_at DATETIME2 NOT NULL,
+            decided_at DATETIME2 NULL
+        )
+        """
+    )
+    db.execute(
+        """
+        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ResultDisputes_exam')
+        CREATE INDEX IX_ResultDisputes_exam ON ResultDisputes (exam_id, status)
+        """
+    )
+    db.execute(
+        """
+        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ResultDisputes_open')
+        CREATE UNIQUE INDEX UX_ResultDisputes_open ON ResultDisputes (attempt_id, question_id) WHERE status = 'open'
+        """
+    )

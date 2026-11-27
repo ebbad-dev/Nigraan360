@@ -64,7 +64,7 @@ class DatabaseConnection:
         apply_migrations(self, self.registered_migrations())
 
     def registered_migrations(self):
-        from database.nigran_schema import apply_nigran360_schema
+        from database.nigran_schema import apply_disputes_schema, apply_nigran360_schema
         from database.schema_migrations import Migration
 
         return (
@@ -79,6 +79,12 @@ class DatabaseConnection:
                 description="Nigran 360 question bank, attempt snapshots, deadlines, grading, results, announcements and verifiable reports",
                 revision="nigran360-v1",
                 apply=lambda: apply_nigran360_schema(self),
+            ),
+            Migration(
+                migration_id="20261127_0003_disputes",
+                description="Result disputes with traceable examiner decisions",
+                revision="disputes-v1",
+                apply=lambda: apply_disputes_schema(self),
             ),
         )
 

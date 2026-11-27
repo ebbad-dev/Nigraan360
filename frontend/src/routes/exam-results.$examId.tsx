@@ -16,6 +16,7 @@ import {
   useWithdrawAnnouncement,
 } from "@/lib/queries";
 import { api } from "@/lib/api";
+import { ExamDisputes } from "@/components/disputes/Disputes";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Activity, AlertCircle, ArrowLeft, CheckCircle2, Download, Megaphone, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,7 +26,7 @@ export const Route = createFileRoute("/exam-results/$examId")({
   component: ExamResultsPage,
 });
 
-type Tab = "results" | "grading" | "analytics" | "monitor" | "announcements";
+type Tab = "results" | "grading" | "disputes" | "analytics" | "monitor" | "announcements";
 
 const inputCls =
   "w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary";
@@ -58,7 +59,7 @@ function ExamResultsPage() {
           </p>
         </div>
         <div role="tablist" className="flex flex-wrap gap-1 border-b border-border">
-          {(["results", "grading", "analytics", "monitor", "announcements"] as const).map((key) => (
+          {(["results", "grading", "disputes", "analytics", "monitor", "announcements"] as const).map((key) => (
             <button
               key={key}
               role="tab"
@@ -75,6 +76,7 @@ function ExamResultsPage() {
         </div>
         {tab === "results" && <ResultsTab examId={examId} />}
         {tab === "grading" && <GradingTab examId={examId} />}
+        {tab === "disputes" && <ExamDisputes examId={examId} />}
         {tab === "analytics" && <AnalyticsTab examId={examId} />}
         {tab === "monitor" && <MonitorTab examId={examId} />}
         {tab === "announcements" && <AnnouncementsTab examId={examId} />}

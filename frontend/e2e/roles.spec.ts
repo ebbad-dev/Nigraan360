@@ -162,3 +162,39 @@ test("administrator sees user and role management; candidate cannot open examine
   await page.goto("/bank");
   await expect(page).toHaveURL(/\/candidate/);
 });
+
+test("candidate disputes a published result and the examiner's decision corrects the score", async ({ page, request, browser }) => {
+  const { exam, email, password, attemptId } = await submittedExam(request);
+  const ex = await apiLogin(request, EXAMINER.email, EXAMINER.password);
+  const h = { Authorization: `Bearer ${ex.access_token}` };
+  const queue = await (await request.get(`${API}/exams/${exam.id}/grading`, { headers: h })).json();
+  await request.post(`${API}/responses/${queue[0].response_id}/grade`, { headers: h, data: { awarded_marks: 2 } });
+  expect((await request.post(`${API}/exams/${exam.id}/results/publish`, { headers: h, data: { publish: true } })).ok()).toBeTruthy();
+
+  await uiLogin(page, email, password, /\/candidate/);
+  await page.getByRole("tab", { name: "My Results" }).click();
+  await expect(page.getByText("6 / 8")).toBeVisible();
+  await page.getByRole("button", { name: "Dispute result" }).click();
+  await page.getByLabel("Disputed question").selectOption({ label: "Q3: Explain caching in one sentence. (2/4)" });
+  await page.getByPlaceholder("Explain what you believe is wrong and why.").fill("My definition covers both locality and reuse; please re-mark.");
+  await page.getByRole("button", { name: "Submit dispute" }).click();
+  await expect(page.getByText(/Dispute recorded/)).toBeVisible();
+
+  const examinerContext = await browser.newContext();
+  const epage = await examinerContext.newPage();
+  await uiLogin(epage, EXAMINER.email, EXAMINER.password, /\/instructor/);
+  await epage.goto(`/exam-results/${exam.id}`);
+  await epage.getByRole("tab", { name: "disputes" }).click();
+  await expect(epage.getByText("My definition covers both locality and reuse; please re-mark.")).toBeVisible();
+  await epage.getByLabel("Decision reasoning").fill("Answer meets the rubric; awarding full marks.");
+  await epage.getByLabel("Revised marks for the question").fill("4");
+  await epage.getByRole("button", { name: "Uphold" }).click();
+  await expect(epage.getByText(/total 6 → 8/)).toBeVisible();
+  await examinerContext.close();
+
+  await page.reload();
+  await page.getByRole("tab", { name: "My Results" }).click();
+  await expect(page.getByText("(100%)")).toBeVisible();
+  await expect(page.getByText(/score 6 → 8/)).toBeVisible();
+  expect(attemptId).toBeTruthy();
+});

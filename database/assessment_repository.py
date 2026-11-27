@@ -511,3 +511,98 @@ class AssessmentRepository:
 
     def revoke_report(self, report_id: str) -> None:
         self.db.execute("UPDATE IssuedReports SET revoked_at = COALESCE(revoked_at, ?) WHERE report_id = ?", (utc_now(), report_id))
+
+    # ── Result disputes ──────────────────────────────────────────────────────
+
+    _DISPUTE_COLUMNS = """
+        d.dispute_id, d.tenant_id, d.attempt_id, d.exam_id, d.user_id, d.question_id, d.reason, d.explanation,
+        d.status, d.original_score, d.original_question_marks, d.revised_question_marks, d.revised_score,
+        d.decision_note, d.decided_by, d.created_at, d.decided_at,
+        e.title AS exam_title, u.full_name AS student_name, u.email AS student_email, a.roll_number, a.max_score
+    """
+
+    def dispute_attempt(self, attempt_id: str) -> dict | None:
+        rows = self.db.query(
+            """
+            SELECT a.attempt_id, a.user_id, a.exam_id, a.tenant_id, a.status, a.score, a.max_score,
+                   COALESCE(a.grading_status, 'graded') AS grading_status, a.snapshot_json,
+                   COALESCE(a.attempt_type, 'real') AS attempt_type, e.results_published_at
+            FROM ExamAttempts a JOIN Exams e ON e.exam_id = a.exam_id
+            WHERE a.attempt_id = ?
+            """,
+            (attempt_id,),
+        )
+        return rows[0] if rows else None
+
+    def open_dispute_exists(self, attempt_id: str, question_id: str | None) -> bool:
+        rows = self.db.query(
+            "SELECT 1 AS hit FROM ResultDisputes WHERE attempt_id = ? AND status = 'open' AND COALESCE(question_id, '') = ?",
+            (attempt_id, question_id or ""),
+        )
+        return bool(rows)
+
+    def create_dispute(self, *, tenant_id: str, attempt_id: str, exam_id: str, user_id: str, question_id: str | None,
+                       reason: str, explanation: str, original_score: int, original_question_marks: int | None) -> dict:
+        dispute_id = new_id("dsp")
+        self.db.execute(
+            """
+            INSERT INTO ResultDisputes (dispute_id, tenant_id, attempt_id, exam_id, user_id, question_id, reason, explanation,
+                                        status, original_score, original_question_marks, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?)
+            """,
+            (dispute_id, tenant_id, attempt_id, exam_id, user_id, question_id, reason, explanation, original_score, original_question_marks, utc_now()),
+        )
+        return self.get_dispute(dispute_id) or {}
+
+    def get_dispute(self, dispute_id: str) -> dict | None:
+        rows = self.db.query(
+            f"""
+            SELECT {self._DISPUTE_COLUMNS}
+            FROM ResultDisputes d
+            JOIN Exams e ON e.exam_id = d.exam_id
+            JOIN Users u ON u.user_id = d.user_id
+            JOIN ExamAttempts a ON a.attempt_id = d.attempt_id
+            WHERE d.dispute_id = ?
+            """,
+            (dispute_id,),
+        )
+        return rows[0] if rows else None
+
+    def list_disputes(self, *, exam_id: str = "", user_id: str = "") -> list[dict]:
+        where, params = ("d.exam_id = ?", [exam_id]) if exam_id else ("d.user_id = ?", [user_id])
+        return self.db.query(
+            f"""
+            SELECT {self._DISPUTE_COLUMNS}
+            FROM ResultDisputes d
+            JOIN Exams e ON e.exam_id = d.exam_id
+            JOIN Users u ON u.user_id = d.user_id
+            JOIN ExamAttempts a ON a.attempt_id = d.attempt_id
+            WHERE {where}
+            ORDER BY CASE WHEN d.status = 'open' THEN 0 ELSE 1 END, d.created_at DESC
+            """,
+            tuple(params),
+        )
+
+    def set_response_marks(self, attempt_id: str, question_id: str, *, awarded_marks: int, graded_by: str, note: str) -> bool:
+        changed = self.db.execute(
+            """
+            UPDATE StudentResponses
+            SET awarded_marks = ?, graded_by = ?, graded_at = ?, updated_at = ?,
+                feedback = CASE WHEN feedback IS NULL OR feedback = '' THEN ? ELSE feedback + CHAR(10) + ? END,
+                grading_status = CASE WHEN grading_status = 'pending_manual' THEN 'manually_graded' ELSE grading_status END
+            WHERE attempt_id = ? AND question_id = ?
+            """,
+            (awarded_marks, graded_by, utc_now(), utc_now(), note, note, attempt_id, question_id),
+        )
+        return bool(changed)
+
+    def decide_dispute(self, dispute_id: str, *, status: str, decision_note: str, decided_by: str,
+                       revised_question_marks: int | None, revised_score: int) -> int:
+        return self.db.execute(
+            """
+            UPDATE ResultDisputes
+            SET status = ?, decision_note = ?, decided_by = ?, decided_at = ?, revised_question_marks = ?, revised_score = ?
+            WHERE dispute_id = ? AND status = 'open'
+            """,
+            (status, decision_note, decided_by, utc_now(), revised_question_marks, revised_score, dispute_id),
+        )

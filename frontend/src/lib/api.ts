@@ -939,6 +939,22 @@ export const api = {
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
   },
 
+  async createDispute(attemptId: string, data: { reason: string; explanation: string; question_id?: string }): Promise<any> {
+    return http<any>(`/attempts/${attemptId}/disputes`, { method: "POST", body: JSON.stringify(data) });
+  },
+
+  async myDisputes(): Promise<any[]> {
+    return http<any[]>("/student/disputes");
+  },
+
+  async examDisputes(examId: string): Promise<any[]> {
+    return http<any[]>(`/exams/${examId}/disputes`);
+  },
+
+  async decideDispute(disputeId: string, data: { decision: string; decision_note: string; revised_marks?: number | null }): Promise<any> {
+    return http<any>(`/disputes/${disputeId}/decision`, { method: "POST", body: JSON.stringify(data) });
+  },
+
   async startSandbox(examId: string): Promise<any> {
     return http<any>(`/exams/${examId}/sandbox`, { method: "POST", body: JSON.stringify({}) });
   },

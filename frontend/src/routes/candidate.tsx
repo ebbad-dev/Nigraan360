@@ -6,6 +6,7 @@ import { GlowButton } from "@/components/common/GlowButton";
 import { LoadingSkeleton } from "@/components/common/States";
 import { useCandidateDashboard, useStartAttempt } from "@/lib/queries";
 import { api } from "@/lib/api";
+import { DisputeForm, MyDisputes } from "@/components/disputes/Disputes";
 import { cn } from "@/lib/utils";
 import { Award, BookOpen, Calendar, ChevronRight, Clock, Download, Megaphone, PlayCircle } from "lucide-react";
 
@@ -43,6 +44,7 @@ function CandidatePage() {
   const [startError, setStartError] = useState("");
   const [downloadError, setDownloadError] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [disputing, setDisputing] = useState<string | null>(null);
 
   const groups: Record<Group, any[]> = dashboard.data?.groups ?? { available: [], in_progress: [], upcoming: [], completed: [], closed: [] };
   const results: any[] = dashboard.data?.results ?? [];
@@ -218,14 +220,22 @@ function CandidatePage() {
                   )}
                 </div>
                 {r.published && (
-                  <GlowButton size="sm" variant="outline" onClick={() => downloadReport(r.attempt_id)} disabled={downloadingId === r.attempt_id}>
-                    <Download aria-hidden /> {downloadingId === r.attempt_id ? "Preparing…" : "Verified PDF report"}
-                  </GlowButton>
+                  <div className="flex flex-wrap gap-2">
+                    <GlowButton size="sm" variant="outline" onClick={() => downloadReport(r.attempt_id)} disabled={downloadingId === r.attempt_id}>
+                      <Download aria-hidden /> {downloadingId === r.attempt_id ? "Preparing…" : "Verified PDF report"}
+                    </GlowButton>
+                    <GlowButton size="sm" variant="ghost" onClick={() => setDisputing(disputing === r.attempt_id ? null : r.attempt_id)}>
+                      Dispute result
+                    </GlowButton>
+                  </div>
                 )}
+                {disputing === r.attempt_id && <DisputeForm attemptId={r.attempt_id} onClose={() => setDisputing(null)} />}
               </GlassCard>
             ))}
           </div>
         )}
+
+        {tab === "results" && <MyDisputes />}
 
         {tab === "announcements" && (
           <div className="space-y-3">

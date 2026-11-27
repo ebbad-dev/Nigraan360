@@ -619,3 +619,32 @@ export function useImportQuestions() {
     },
   });
 }
+
+export function useMyDisputes() {
+  return useQuery({ queryKey: ["my-disputes"], queryFn: () => api.myDisputes() });
+}
+
+export function useCreateDispute() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ attemptId, data }: { attemptId: string; data: { reason: string; explanation: string; question_id?: string } }) =>
+      api.createDispute(attemptId, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-disputes"] }),
+  });
+}
+
+export function useExamDisputes(examId: string) {
+  return useQuery({ queryKey: ["exam-disputes", examId], queryFn: () => api.examDisputes(examId), enabled: !!examId });
+}
+
+export function useDecideDispute(examId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ disputeId, data }: { disputeId: string; data: { decision: string; decision_note: string; revised_marks?: number | null } }) =>
+      api.decideDispute(disputeId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["exam-disputes", examId] });
+      qc.invalidateQueries({ queryKey: qk.examResults(examId) });
+    },
+  });
+}

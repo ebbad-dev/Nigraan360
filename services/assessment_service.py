@@ -392,6 +392,130 @@ class AssessmentService:
             "questions": rows,
         }
 
+    # ── Result disputes ──────────────────────────────────────────────────────
+
+    DISPUTE_REASONS = {"marking_error", "answer_key_error", "technical_issue", "other"}
+
+    def _format_dispute(self, row: dict, *, staff: bool) -> dict:
+        data = {
+            "dispute_id": row["dispute_id"],
+            "attempt_id": row["attempt_id"],
+            "exam_id": row["exam_id"],
+            "exam_title": row.get("exam_title") or "",
+            "question_id": row.get("question_id"),
+            "reason": row.get("reason"),
+            "explanation": row.get("explanation") or "",
+            "status": row.get("status"),
+            "original_score": int(row.get("original_score") or 0),
+            "revised_score": int(row["revised_score"]) if row.get("revised_score") is not None else None,
+            "original_question_marks": row.get("original_question_marks"),
+            "revised_question_marks": row.get("revised_question_marks"),
+            "max_score": int(row.get("max_score") or 0),
+            "decision_note": row.get("decision_note") or "",
+            "created_at": iso(row.get("created_at")),
+            "decided_at": iso(row.get("decided_at")) if row.get("decided_at") else None,
+        }
+        if staff:
+            data.update(
+                {
+                    "student_name": row.get("student_name") or "",
+                    "student_email": row.get("student_email") or "",
+                    "roll_number": row.get("roll_number") or "",
+                }
+            )
+        return data
+
+    def create_dispute(self, attempt_id: str, data: dict, user: dict) -> dict:
+        attempt = self._repo().dispute_attempt(attempt_id)
+        if not attempt or attempt.get("user_id") != user["user_id"] or attempt.get("attempt_type") != "real":
+            _fail(404, "not_found", "Result not found.")
+        published = attempt.get("results_published_at") and attempt.get("grading_status") != rules.GRADE_PENDING
+        if attempt.get("status") != "submitted" or not published:
+            _fail(409, "result_not_published", "You can dispute a result only after it has been published.")
+        reason = str(data.get("reason") or "").strip().lower()
+        if reason not in self.DISPUTE_REASONS:
+            _fail(422, "validation_error", "Choose a reason: marking error, answer key error, technical issue or other.")
+        explanation = str(data.get("explanation") or "").strip()
+        if not (10 <= len(explanation) <= 2000):
+            _fail(422, "validation_error", "Explain the dispute in 10 to 2000 characters.")
+        question_id = str(data.get("question_id") or "").strip() or None
+        question_marks = None
+        if question_id:
+            paper = rules.load_snapshot(attempt.get("snapshot_json")) or {"questions": []}
+            if not rules.snapshot_question(paper, question_id):
+                _fail(422, "validation_error", "That question is not part of this attempt.")
+            response = self._repo().get_response(attempt_id, question_id)
+            question_marks = int((response or {}).get("awarded_marks") or 0)
+        if self._repo().open_dispute_exists(attempt_id, question_id):
+            _fail(409, "dispute_exists", "You already have an open dispute for this item.")
+        row = self._repo().create_dispute(
+            tenant_id=attempt.get("tenant_id") or tenant_id(user),
+            attempt_id=attempt_id,
+            exam_id=attempt["exam_id"],
+            user_id=user["user_id"],
+            question_id=question_id,
+            reason=reason,
+            explanation=explanation,
+            original_score=int(attempt.get("score") or 0),
+            original_question_marks=question_marks,
+        )
+        return self._format_dispute(row, staff=False)
+
+    def my_disputes(self, user: dict) -> list[dict]:
+        return [self._format_dispute(row, staff=False) for row in self._repo().list_disputes(user_id=user["user_id"])]
+
+    def exam_disputes(self, exam_id: str, user: dict) -> list[dict]:
+        self._require_staff_exam(exam_id, user)
+        return [self._format_dispute(row, staff=True) for row in self._repo().list_disputes(exam_id=exam_id)]
+
+    def decide_dispute(self, dispute_id: str, data: dict, user: dict) -> dict:
+        dispute = self._repo().get_dispute(dispute_id)
+        if not dispute:
+            _fail(404, "not_found", "Dispute not found.")
+        self._require_staff_exam(dispute["exam_id"], user)
+        if dispute.get("status") != "open":
+            _fail(409, "dispute_closed", "This dispute has already been decided.")
+        decision = str(data.get("decision") or "").strip().lower()
+        if decision not in {"upheld", "rejected"}:
+            _fail(422, "validation_error", "Decision must be upheld or rejected.")
+        note = str(data.get("decision_note") or "").strip()
+        if not (5 <= len(note) <= 2000):
+            _fail(422, "validation_error", "Record the reasoning for the decision (5 to 2000 characters).")
+        revised_marks = None
+        if decision == "upheld" and dispute.get("question_id") and data.get("revised_marks") is not None:
+            attempt = self._repo().dispute_attempt(dispute["attempt_id"]) or {}
+            paper = rules.load_snapshot(attempt.get("snapshot_json")) or {"questions": []}
+            question = rules.snapshot_question(paper, dispute["question_id"]) or {}
+            try:
+                raw = float(data.get("revised_marks"))
+            except (TypeError, ValueError):
+                _fail(422, "validation_error", "Revised marks must be a whole number.")
+            max_marks = int(question.get("marks") or 0)
+            if not raw.is_integer() or raw < 0 or raw > max_marks:
+                _fail(422, "marks_out_of_range", f"Revised marks must be a whole number between 0 and {max_marks}.")
+            revised_marks = int(raw)
+            updated = self._repo().set_response_marks(
+                dispute["attempt_id"],
+                dispute["question_id"],
+                awarded_marks=revised_marks,
+                graded_by=user["user_id"],
+                note=("Dispute decision: " + note)[:2000],
+            )
+            if not updated:
+                _fail(409, "no_response", "The candidate did not answer this question, so there are no marks to revise.")
+        totals = self._repo().finalize_scores(dispute["attempt_id"])
+        closed = self._repo().decide_dispute(
+            dispute_id,
+            status=decision,
+            decision_note=note,
+            decided_by=user["user_id"],
+            revised_question_marks=revised_marks,
+            revised_score=totals["score"],
+        )
+        if not closed:
+            _fail(409, "dispute_closed", "This dispute has already been decided.")
+        return self._format_dispute(self._repo().get_dispute(dispute_id) or dispute, staff=True)
+
     # ── Academic reports and verification ────────────────────────────────────
 
     def _report_context(self, attempt_id: str, user: dict) -> tuple[dict, dict]:
