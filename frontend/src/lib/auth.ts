@@ -40,6 +40,14 @@ export function setAuthSession(session: Omit<AuthSession, "logged_in_at">) {
 export function clearAuthSession() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(KEY);
+  // Scratchpad rough work is private to the signed-in candidate on this device.
+  try {
+    Object.keys(window.localStorage)
+      .filter((key) => key.startsWith("n360:scratch:"))
+      .forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    // Storage unavailable: nothing to clear.
+  }
   window.dispatchEvent(new Event("Nigran 360-auth-change"));
 }
 

@@ -170,3 +170,47 @@ test("5.3 change made offline after the server deadline is not counted", async (
   expect(final.status).toBe("submitted");
   expect(finalRow.selected_option_id).toBe(islamabad);
 });
+
+test("4.7/4.8 scratchpad stays local and separate from answers; display preferences persist", async ({ page, request }) => {
+  const { exam, candidate, candidateEmail, password } = await setupExam(request);
+  const auth = { Authorization: `Bearer ${candidate.access_token}` };
+  const attempt = await (await request.post(`${API}/attempts/start`, { headers: auth, data: { exam_id: exam.id, roll_number: "UAT-PAD" } })).json();
+  const note = `rough-work-${Date.now()}`;
+  const leaked: string[] = [];
+  page.on("request", (req) => {
+    if ((req.postData() ?? "").includes(note) || req.url().includes(note)) leaked.push(req.url());
+  });
+  await signInAs(page, candidateEmail, password);
+  await page.goto(`/exam?attempt_id=${attempt.attempt_id}`);
+  await page.getByText("Islamabad", { exact: true }).click();
+  await expect(page.getByTestId("save-status")).toHaveText("Saved on server");
+
+  await page.getByRole("button", { name: "Scratchpad" }).click();
+  await page.getByLabel("Rough work").fill(note);
+  await page.getByLabel("Rough work").blur();
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: /Display/ }).click();
+  await page.getByRole("button", { name: "125%" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-text-scale", "125");
+
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-text-scale", "125");
+  await page.getByRole("button", { name: "Scratchpad" }).click();
+  await expect(page.getByLabel("Rough work")).toHaveValue(note);
+
+  const server = await (await request.get(`${API}/attempts/${attempt.attempt_id}`, { headers: auth })).json();
+  expect(JSON.stringify(server)).not.toContain(note);
+  expect(leaked, "scratchpad text never sent over the network").toEqual([]);
+});
+
+test("5.3 a network failure while checking the session does not sign the candidate out", async ({ page, request }) => {
+  const { candidateEmail, password } = await setupExam(request);
+  await signInAs(page, candidateEmail, password);
+  await page.route("**/auth/me", (route) => route.abort("internetdisconnected"));
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "My Exams" })).toBeVisible();
+  await expect(page).toHaveURL(/\/candidate/);
+  const stored = await page.evaluate(() => window.localStorage.getItem("Nigran 360_auth"));
+  expect(stored).not.toBeNull();
+});

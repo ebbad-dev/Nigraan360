@@ -61,12 +61,13 @@ export class ApiError extends Error {
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
+  const auth = authHeaders();
   try {
     res = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
       headers: {
         "Content-Type": "application/json",
-        ...authHeaders(),
+        ...auth,
         ...(init?.headers ?? {}),
       },
     });
@@ -81,7 +82,9 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
     data = {};
   }
   if (!res.ok) {
-    if (res.status === 401) {
+    // Only sign out when the rejected request carried the session that is still stored;
+    // an anonymous or stale request (e.g. during server render) must not end a live session.
+    if (res.status === 401 && auth.Authorization && auth.Authorization === authHeaders().Authorization) {
       clearAuthSession();
       if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
         window.location.assign("/login");

@@ -7,6 +7,10 @@ import { GlowButton } from "@/components/common/GlowButton";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { LoadingSkeleton } from "@/components/common/States";
 import { ConnectionBanner } from "@/components/common/ConnectionStatus";
+import { WorkspacePreferences } from "@/components/common/WorkspacePreferences";
+import { Scratchpad } from "@/components/scratchpad/Scratchpad";
+import { getAuthSession } from "@/lib/auth";
+import { useWorkspacePrefs } from "@/lib/preferences";
 import { qk, useAttempt, useBrowserGuardActive, useLiveRisk, useSubmitAttempt } from "@/lib/queries";
 import { api } from "@/lib/api";
 import { useAttemptOutbox, type AnswerPayload } from "@/lib/attempt-sync";
@@ -142,6 +146,9 @@ function Workspace({ attempt }: { attempt: ExamAttempt }) {
   const [proctorNotice, setProctorNotice] = useState("");
   const [fullscreen, setFullscreen] = useState(false);
   const autoSubmitted = useRef(false);
+  const userId = getAuthSession()?.user.user_id ?? attempt.user_id;
+  const workspace = useWorkspacePrefs(userId);
+  const focus = workspace.prefs.focusLayout;
 
   const questions = attempt.questions;
   const serverRows = useMemo(() => new Map(attempt.responses.map((row) => [row.question_id, row])), [attempt.responses]);
@@ -304,7 +311,11 @@ function Workspace({ attempt }: { attempt: ExamAttempt }) {
           {outbox.state.closedMessage}
         </div>
       )}
-      <div className="grid gap-4 xl:grid-cols-[260px_1fr_280px]">
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+        <Scratchpad userId={userId} scope={`attempt:${attemptId}`} />
+        <WorkspacePreferences prefs={workspace.prefs} update={workspace.update} saved={workspace.saved} />
+      </div>
+      <div className={cn("grid gap-4", focus ? "xl:grid-cols-[200px_1fr]" : "xl:grid-cols-[260px_1fr_280px]")}>
         <GlassCard className="p-4">
           <div className="flex items-center gap-2">
             <ListChecks className="h-4 w-4 text-primary" aria-hidden />
@@ -396,7 +407,7 @@ function Workspace({ attempt }: { attempt: ExamAttempt }) {
           {submitError && <p role="alert" className="mt-3 rounded-lg border border-red-400/30 bg-red-400/10 p-2 text-xs text-red-200">{submitError}</p>}
         </GlassCard>
 
-        <div className="space-y-4">
+        <div className={cn("space-y-4", focus && "hidden")}>
           <GlassCard className="p-4">
             <h3 className="text-sm font-semibold">How saving works</h3>
             <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">

@@ -26,7 +26,7 @@ import { ModeBadge } from "@/components/common/ModeBadge";
 import { EvidenceLightboxProvider } from "@/components/common/EvidenceLightbox";
 import { useDensity } from "@/hooks/use-density";
 import { clearAuthSession, getAuthSession, redirectForRole, roleCanAccess, type Role } from "@/lib/auth";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 
 const nav = [
   { to: "/monitor", label: "Live Monitor", icon: Activity, roles: ["instructor", "admin"] },
@@ -68,9 +68,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
     setRole(session.user.role);
-    api.me().catch(() => {
-      clearAuthSession();
-      navigate({ to: "/login" });
+    api.me().catch((err) => {
+      // Network failures (offline, server restarting, aborted navigation) must not sign the
+      // candidate out mid-exam; only a definitive 401 ends the session.
+      if (err instanceof ApiError && err.status === 401) {
+        clearAuthSession();
+        navigate({ to: "/login" });
+      }
     });
     setChecked(true);
   }, [navigate, pathname]);
