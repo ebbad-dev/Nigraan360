@@ -145,7 +145,7 @@ function PanelBody({
         </div>
         <div className="leading-tight">
           <div className="text-sm font-semibold">Nigran 360 Guide</div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">
             Support only · won't answer exam questions
           </div>
         </div>
@@ -155,7 +155,7 @@ function PanelBody({
               key={m}
               onClick={() => setMode(m)}
               className={cn(
-                "rounded-md px-2 py-1 text-[10px] uppercase tracking-wider transition-colors",
+                "rounded-md px-2 py-1 text-xs uppercase tracking-wider transition-colors",
                 mode === m
                   ? "bg-primary/20 text-primary"
                   : "text-muted-foreground hover:bg-white/5",
@@ -246,7 +246,7 @@ function Bubble({ msg, onChip }: { msg: AssistantMessage; onChip: (s: string) =>
             <button
               key={q}
               onClick={() => onChip(q)}
-              className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] text-primary transition-colors hover:bg-primary/20"
+              className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs text-primary transition-colors hover:bg-primary/20"
             >
               {q}
             </button>

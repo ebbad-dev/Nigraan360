@@ -150,7 +150,7 @@ export function LaneEventTimeline({ events, evidence = [] }: Props) {
           className="flex w-full items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
         >
           <Filter className="h-3.5 w-3.5" /> Filters
-          <span className="ml-1 text-[11px]">
+          <span className="ml-1 text-xs">
             {Object.values(lanesOn).filter(Boolean).length}/5 lanes ·{" "}
             {Object.values(sevOn).filter(Boolean).length}/4 severities
           </span>
@@ -173,7 +173,7 @@ export function LaneEventTimeline({ events, evidence = [] }: Props) {
                     key={l}
                     onClick={() => setLanesOn((s) => ({ ...s, [l]: !s[l] }))}
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition",
+                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition",
                       lanesOn[l]
                         ? laneConfig[l].ring + " " + laneConfig[l].tint
                         : "border-white/10 text-muted-foreground opacity-50 hover:opacity-100",
@@ -188,7 +188,7 @@ export function LaneEventTimeline({ events, evidence = [] }: Props) {
                     key={sv}
                     onClick={() => setSevOn((s) => ({ ...s, [sv]: !s[sv] }))}
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] uppercase tracking-wider transition",
+                      "inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs uppercase tracking-wider transition",
                       !sevOn[sv] && "opacity-40",
                     )}
                   >
@@ -209,7 +209,7 @@ export function LaneEventTimeline({ events, evidence = [] }: Props) {
             <div key={l} className="flex items-stretch gap-3">
               <div
                 className={cn(
-                  "flex w-28 shrink-0 items-center gap-2 rounded-lg border px-2.5 py-2 text-[11px]",
+                  "flex w-28 shrink-0 items-center gap-2 rounded-lg border px-2.5 py-2 text-xs",
                   laneConfig[l].ring,
                   laneConfig[l].tint,
                 )}
@@ -220,7 +220,7 @@ export function LaneEventTimeline({ events, evidence = [] }: Props) {
               <div className="relative flex-1 overflow-hidden rounded-lg border border-white/5 bg-white/[0.02]">
                 <div className="absolute inset-y-1/2 left-2 right-2 h-px bg-white/10" />
                 {items.length === 0 ? (
-                  <div className="grid h-12 place-items-center text-[11px] text-muted-foreground/70">
+                  <div className="grid h-12 place-items-center text-xs text-muted-foreground/70">
                     No events
                   </div>
                 ) : (

@@ -171,7 +171,7 @@ function MonitorPage() {
                 {session.data?.student.name ?? "—"} ·{" "}
                 <span className="text-muted-foreground">{session.data?.exam.title ?? "—"}</span>
               </div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 Session {derivedSessionId} · Started{" "}
                 {session.data?.started_at
                   ? new Date(session.data.started_at).toLocaleTimeString()
@@ -231,7 +231,7 @@ function MonitorPage() {
             <GlassCard className="p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Risk analysis</h3>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   Updated {risk.data ? new Date(risk.data.updated_at).toLocaleTimeString() : "—"}
                 </span>
               </div>
@@ -262,7 +262,7 @@ function MonitorPage() {
             <GlassCard className="p-4">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Live events</h3>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {events.data?.length ?? 0} events
                 </span>
               </div>
@@ -343,7 +343,7 @@ function MonitorPage() {
               {risk.data && <RiskContributorList items={risk.data.contributors} />}
             </TabsContent>
             <TabsContent value="logs" className="p-3">
-              <pre className="overflow-x-auto rounded-xl border border-white/5 bg-black/40 p-3 text-[11px] leading-relaxed text-muted-foreground">
+              <pre className="overflow-x-auto rounded-xl border border-white/5 bg-black/40 p-3 text-xs leading-relaxed text-muted-foreground">
                 {[
                   `[backend] ${backendHealth.isSuccess ? "connected" : backendHealth.isError ? "unreachable" : "checking"}`,
                   `[proctor] ${proctorStatus.data?.engine_running ? "running" : "not running"}`,

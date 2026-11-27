@@ -45,13 +45,13 @@ export function BrowserActivityTimeline({ items }: { items: BrowserActivity[] })
                 <span className="ml-2 font-mono text-xs text-primary">+{a.risk_impact}</span>
               )}
             </div>
-            <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+            <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
               <span>{new Date(a.timestamp).toLocaleTimeString()}</span>
               {a.time_away_ms != null && <span>· away {(a.time_away_ms / 1000).toFixed(1)}s</span>}
               {a.domain_category && (
                 <span
                   className={cn(
-                    "ml-auto rounded border px-1.5 py-0.5 uppercase tracking-wider text-[10px]",
+                    "ml-auto rounded border px-1.5 py-0.5 uppercase tracking-wider text-xs",
                     catStyles[a.domain_category],
                   )}
                 >

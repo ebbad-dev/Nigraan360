@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { CheckCircle2, XCircle, Loader2, ShieldCheck } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { BrandLockup } from "@/components/brand/Brand";
 import { GlassCard } from "@/components/common/GlassCard";
 
 export const Route = createFileRoute("/verify/$token")({
-  head: () => ({ meta: [{ title: "Verify Report · Nigran 360" }] }),
+  head: () => ({ meta: [{ title: "Verify report · نگران 360" }] }),
   component: VerifyPage,
 });
 
@@ -28,8 +29,8 @@ function VerifyPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-4">
         <div className="text-center mb-6">
-          <ShieldCheck className="h-10 w-10 text-primary mx-auto mb-2" />
-          <h1 className="text-2xl font-bold text-foreground">Nigran 360</h1>
+          <BrandLockup size="lg" className="justify-center" />
+          <h1 className="sr-only">Nigran 360 report verification</h1>
           <p className="text-sm text-muted-foreground">Official Report Verification</p>
         </div>
 

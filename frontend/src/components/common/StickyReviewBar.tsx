@@ -16,10 +16,10 @@ export function StickyReviewBar({ session }: { session: SessionDetail }) {
           label={`Risk ${session.risk_score} · ${session.risk_level}`}
           level={session.risk_level}
         />
-        <span className="hidden items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-muted-foreground sm:inline-flex">
+        <span className="hidden items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-muted-foreground sm:inline-flex">
           <Camera className="h-3 w-3" /> {session.evidence.length} evidence
         </span>
-        <span className="hidden items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-muted-foreground sm:inline-flex">
+        <span className="hidden items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-muted-foreground sm:inline-flex">
           <Globe className="h-3 w-3" /> {browserViolations} browser
         </span>
 

@@ -166,11 +166,11 @@ function SessionReviewPage() {
                         </div>
                         <div className="mt-2 grid gap-2 text-sm md:grid-cols-2">
                           <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
-                            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Selected</div>
+                            <div className="text-xs uppercase tracking-wider text-muted-foreground">Selected</div>
                             <div>{selected?.option_text || "No answer"}</div>
                           </div>
                           <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 p-2">
-                            <div className="text-[11px] uppercase tracking-wider text-emerald-200">Correct</div>
+                            <div className="text-xs uppercase tracking-wider text-emerald-200">Correct</div>
                             <div>{correct?.option_text || "No correct option stored"}</div>
                           </div>
                         </div>
@@ -253,16 +253,16 @@ function SessionReviewPage() {
             </GlowButton>
           </div>
           {review.isSuccess && (
-            <p className="mt-3 rounded-lg border border-emerald-400/30 bg-emerald-400/10 p-2.5 text-[11px] text-emerald-200">
+            <p className="mt-3 rounded-lg border border-emerald-400/30 bg-emerald-400/10 p-2.5 text-xs text-emerald-200">
               Review saved for this session.
             </p>
           )}
           {review.isError && (
-            <p className="mt-3 rounded-lg border border-red-400/30 bg-red-400/10 p-2.5 text-[11px] text-red-200">
+            <p className="mt-3 rounded-lg border border-red-400/30 bg-red-400/10 p-2.5 text-xs text-red-200">
               Review save failed. Confirm the backend is running and try again.
             </p>
           )}
-          <p className="mt-3 rounded-lg border border-white/10 bg-white/5 p-2.5 text-[11px] text-muted-foreground">
+          <p className="mt-3 rounded-lg border border-white/10 bg-white/5 p-2.5 text-xs text-muted-foreground">
             Nigran 360 provides risk analysis and evidence. Instructor decision required for final
             academic outcome.
           </p>

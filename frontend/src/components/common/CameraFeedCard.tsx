@@ -75,7 +75,7 @@ export function CameraFeedCard({
         </div>
 
         {resolution && (
-          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-3 text-[10px] uppercase text-muted-foreground">
+          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-3 text-xs uppercase text-muted-foreground">
             <span>{resolution}</span>
             <span>
               Nigran 360 -{" "}

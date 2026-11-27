@@ -50,7 +50,7 @@ export function ExamAnnouncements({ examId }: { examId: string }) {
           <div className="flex-1">
             <p className="font-semibold">
               {a.title}
-              {fresh.has(a.announcement_id) && <span className="ml-2 rounded bg-primary px-1.5 text-[10px] uppercase text-primary-foreground">New</span>}
+              {fresh.has(a.announcement_id) && <span className="ml-2 rounded bg-primary px-1.5 text-xs uppercase text-primary-foreground">New</span>}
             </p>
             <p className="text-foreground/90">{a.body}</p>
             <p className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleTimeString()}</p>

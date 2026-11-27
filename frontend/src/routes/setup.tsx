@@ -279,10 +279,10 @@ function SetupPage() {
                   {idx < i ? (
                     <CheckCircle2 className="h-4 w-4" />
                   ) : (
-                    <span className="text-[11px]">{idx + 1}</span>
+                    <span className="text-xs">{idx + 1}</span>
                   )}
                 </motion.div>
-                <div className="hidden text-[10px] uppercase tracking-wider text-muted-foreground md:block">
+                <div className="hidden text-xs uppercase tracking-wider text-muted-foreground md:block">
                   {s.t}
                 </div>
               </li>

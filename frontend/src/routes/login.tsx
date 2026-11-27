@@ -1,17 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { FormEvent, useState } from "react";
-import {
-  Activity,
-  ArrowRight,
-  Eye,
-  EyeOff,
-  Fingerprint,
-  LockKeyhole,
-  Radar,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
-import { AnimatedShield } from "@/components/effects/AnimatedShield";
+import { ArrowRight, BadgeCheck, Eye, EyeOff, LockKeyhole, UsersRound, WifiOff } from "lucide-react";
+import { BrandLockup } from "@/components/brand/Brand";
 import { GlowButton } from "@/components/common/GlowButton";
 import { API_BASE_URL, endpoints } from "@/config/endpoints";
 import { api } from "@/lib/api";
@@ -23,7 +13,7 @@ export const Route = createFileRoute("/login")({
       { title: "Sign in - Nigran 360" },
       {
         name: "description",
-        content: "Secure AI-powered exam monitoring login for students and instructors.",
+        content: "Sign in to Nigran 360, the secure examination management system.",
       },
     ],
   }),
@@ -61,26 +51,26 @@ function LoginPage() {
   };
 
   return (
-    <AuthShell eyebrow="Secure AI-Powered Exam Monitoring" title="Welcome back">
+    <AuthShell eyebrow="Secure examination management" title="Sign in">
       <form className="space-y-4" onSubmit={onSubmit}>
         <Field label="Email address" type="email" value={email} onChange={setEmail} autoComplete="email" />
         <label className="block text-sm">
-          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-cyan-100/70">
+          <span className="mb-1.5 block text-sm font-medium text-foreground">
             Password
           </span>
-          <div className="group flex h-12 items-center rounded-2xl border border-white/10 bg-white/[0.065] px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition duration-300 focus-within:border-cyan-200/70 focus-within:bg-white/[0.09] focus-within:shadow-[0_0_0_3px_rgba(34,211,238,0.14),inset_0_1px_0_rgba(255,255,255,0.12)]">
+          <div className="flex h-11 items-center rounded-lg border border-input bg-background px-3 focus-within:ring-2 focus-within:ring-ring">
             <input
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               type={show ? "text" : "password"}
               autoComplete="current-password"
-              className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/35"
+              className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
               placeholder="Enter your password"
             />
             <button
               type="button"
               onClick={() => setShow((v) => !v)}
-              className="grid h-8 w-8 place-items-center rounded-lg text-white/60 transition hover:bg-white/10 hover:text-white"
+              className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={show ? "Hide password" : "Show password"}
             >
               {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -96,10 +86,10 @@ function LoginPage() {
 
         <GoogleAuthButton label="Continue with Google" />
 
-        <div className="flex items-center gap-3 text-xs uppercase tracking-[0.22em] text-cyan-100/45">
-          <span className="h-px flex-1 bg-white/10" />
+        <div className="flex items-center gap-3 text-xs uppercase tracking-[0.08em] text-muted-foreground">
+          <span className="h-px flex-1 bg-border" />
           <span>Email access</span>
-          <span className="h-px flex-1 bg-white/10" />
+          <span className="h-px flex-1 bg-border" />
         </div>
 
         <GlowButton disabled={submitting} className="w-full" size="lg">
@@ -108,13 +98,13 @@ function LoginPage() {
           {!submitting && <ArrowRight className="h-4 w-4" />}
         </GlowButton>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-cyan-100/70">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
           <Link to="/forgot-password" className="transition hover:text-white">
             Forgot password?
           </Link>
           <span>
             New student?{" "}
-            <Link to="/register" className="font-medium text-cyan-200 transition hover:text-white">
+            <Link to="/register" className="font-medium text-primary underline-offset-4 hover:underline">
               Create account
             </Link>
           </span>
@@ -133,9 +123,9 @@ export function GoogleAuthButton({ label = "Continue with Google" }: { label?: s
     <button
       type="button"
       onClick={onClick}
-      className="group flex h-12 w-full items-center justify-center gap-3 rounded-2xl border border-white/12 bg-white/[0.07] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] transition duration-300 hover:-translate-y-0.5 hover:border-cyan-100/35 hover:bg-white/[0.10] hover:shadow-[0_20px_60px_-35px_rgba(34,211,238,0.75)]"
+      className="flex h-11 w-full items-center justify-center gap-3 rounded-lg border border-input bg-secondary px-4 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <span className="grid h-7 w-7 place-items-center rounded-full bg-white text-sm font-bold text-slate-950 transition duration-300 group-hover:scale-105">
+      <span className="grid h-7 w-7 place-items-center rounded-full bg-white text-sm font-bold text-slate-950">
         G
       </span>
       {label}
@@ -153,82 +143,44 @@ export function AuthShell({
   children: React.ReactNode;
 }) {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#020611] text-white">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_18%_8%,rgba(34,211,238,0.24),transparent_38%),radial-gradient(ellipse_at_86%_18%,rgba(124,58,237,0.22),transparent_34%),linear-gradient(135deg,#020611_0%,#06101d_46%,#0b1026_100%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.038)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.038)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:linear-gradient(to_bottom,rgba(0,0,0,0.82),transparent_92%)]" />
-      <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-cyan-200/60 to-transparent" />
-      <div className="absolute inset-x-0 top-16 h-64 bg-[linear-gradient(90deg,transparent,rgba(34,211,238,0.10),transparent)] blur-3xl" />
-
-      <section className="relative mx-auto grid min-h-screen max-w-7xl grid-cols-1 items-center gap-10 px-5 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_460px] lg:px-10">
-        <div className="max-w-3xl py-8">
-          <div className="mb-9 flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-cyan-300 text-slate-950 shadow-[0_0_42px_rgba(34,211,238,0.5)] transition duration-500 hover:scale-105 hover:rotate-3">
-              <ShieldCheck className="h-6 w-6" />
-            </div>
-            <div>
-              <div className="text-xl font-semibold tracking-tight">Nigran 360</div>
-              <div className="text-xs uppercase tracking-[0.28em] text-cyan-100/60">Integrity Intelligence</div>
-            </div>
+    <main className="min-h-screen bg-background text-foreground">
+      <section className="mx-auto grid min-h-screen max-w-6xl grid-cols-1 lg:grid-cols-[1fr_480px]">
+        <div className="flex flex-col justify-between gap-10 bg-sidebar px-6 py-10 sm:px-10 lg:py-14">
+          <BrandLockup size="lg" />
+          <div className="max-w-xl">
+            <p className="text-sm font-medium uppercase tracking-[0.08em] text-sidebar-foreground/70">{eyebrow}</p>
+            <h1 className="mt-3 text-3xl leading-tight text-sidebar-foreground md:text-[2.5rem] md:leading-[1.15]">
+              Fair exams, verified results.
+            </h1>
+            <p className="mt-4 max-w-lg text-base leading-7 text-sidebar-foreground/75">
+              Create, deliver, monitor and grade examinations with a server-enforced clock, answers that survive
+              outages, and results anyone can verify.
+            </p>
+            <ul className="mt-8 grid gap-4 sm:grid-cols-3">
+              {[
+                { icon: WifiOff, label: "Resilient delivery", value: "Answers queue safely offline; time never extends" },
+                { icon: BadgeCheck, label: "Verified results", value: "Every report carries a QR verification code" },
+                { icon: UsersRound, label: "Role-based access", value: "Administrator, examiner and candidate" },
+              ].map((item) => (
+                <li key={item.label} className="border-t border-sidebar-border pt-3">
+                  <item.icon className="h-5 w-5 text-sidebar-primary" aria-hidden />
+                  <div className="mt-2 text-sm font-medium text-sidebar-foreground">{item.label}</div>
+                  <div className="mt-1 text-sm leading-5 text-sidebar-foreground/65">{item.value}</div>
+                </li>
+              ))}
+            </ul>
           </div>
-
-          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/15 bg-cyan-200/10 px-3 py-1 text-xs text-cyan-100 shadow-[0_0_28px_rgba(34,211,238,0.12)] backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5" />
-            {eyebrow}
-          </div>
-
-          <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-tight md:text-6xl">
-            Secure AI exam monitoring for high-trust institutions.
-          </h1>
-
-          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300">
-            Real-time monitoring, smart alerts, secure exam sessions, evidence-backed reviews, and role-based access for serious academic environments.
-          </p>
-
-          <div className="mt-9 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
-            {[
-              { icon: Radar, label: "Live detection", value: "Camera, audio, browser" },
-              { icon: Activity, label: "Risk scoring", value: "Event-backed analysis" },
-              { icon: Fingerprint, label: "Access control", value: "Student, instructor, admin" },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="group rounded-2xl border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:border-cyan-200/35 hover:bg-white/[0.075] hover:shadow-[0_20px_60px_-34px_rgba(34,211,238,0.65)]"
-              >
-                <item.icon className="h-5 w-5 text-cyan-200 transition duration-300 group-hover:scale-110" />
-                <div className="mt-3 text-sm font-medium">{item.label}</div>
-                <div className="mt-1 text-xs leading-5 text-slate-400">{item.value}</div>
-              </div>
-            ))}
-          </div>
+          <p className="text-xs text-sidebar-foreground/55">Technoverse 5.0 · Secure Examination Management System</p>
         </div>
 
-        <div className="relative mx-auto w-full max-w-[460px]">
-          <div className="pointer-events-none absolute -inset-[1px] rounded-[2rem] bg-[linear-gradient(135deg,rgba(103,232,249,0.55),rgba(168,85,247,0.22),rgba(20,184,166,0.28))] opacity-70 blur-[1px]" />
-          <div className="group relative overflow-hidden rounded-[2rem] border border-white/15 bg-white/[0.075] p-6 shadow-[0_30px_100px_-38px_rgba(34,211,238,0.72),inset_0_1px_0_rgba(255,255,255,0.20)] backdrop-blur-2xl transition duration-500 hover:-translate-y-1 hover:border-cyan-100/35 hover:bg-white/[0.095] hover:shadow-[0_42px_120px_-42px_rgba(34,211,238,0.82),inset_0_1px_0_rgba(255,255,255,0.26)]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.22),transparent)] opacity-0 blur-xl transition duration-700 group-hover:translate-x-16 group-hover:opacity-100" />
-            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/55 to-transparent" />
-            <div className="pointer-events-none absolute inset-y-8 right-0 w-px bg-gradient-to-b from-transparent via-cyan-100/30 to-transparent" />
-
-            <div className="relative mb-6 flex items-start justify-between gap-5">
-              <div>
-                <div className="text-xs uppercase tracking-[0.24em] text-cyan-100/60">Secure access</div>
-                <h2 className="mt-2 text-3xl font-semibold">{title}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-300">Use your registered Nigran 360 account.</p>
-              </div>
-              <div className="hidden shrink-0 sm:block">
-                <AnimatedShield size={86} />
-              </div>
-            </div>
-
-            <div className="relative">
-              {children}
-            </div>
-
-            <div className="relative mt-6 grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-slate-950/35 p-2 text-center text-[11px] text-cyan-100/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-              <span>Encrypted auth</span>
-              <span>RBAC enforced</span>
-              <span>Audit logged</span>
-            </div>
+        <div className="flex items-center px-6 py-10 sm:px-10">
+          <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8">
+            <h2 className="text-2xl font-semibold">{title}</h2>
+            <p className="mt-1 mb-6 text-sm text-muted-foreground">Use your Nigran 360 account.</p>
+            {children}
+            <p className="mt-6 border-t border-border pt-4 text-xs text-muted-foreground">
+              Passwords are hashed, permissions are enforced on the server, and sign-ins are audit-logged.
+            </p>
           </div>
         </div>
       </section>
@@ -253,7 +205,7 @@ export function Field({
 }) {
   return (
     <label className="block text-sm">
-      <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-cyan-100/70">
+      <span className="mb-1.5 block text-sm font-medium text-foreground">
         {label}
       </span>
       <input
@@ -262,7 +214,7 @@ export function Field({
         type={type}
         autoComplete={autoComplete}
         placeholder={placeholder}
-        className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.065] px-3 text-sm text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] outline-none transition duration-300 placeholder:text-white/35 hover:bg-white/[0.08] focus:border-cyan-200/70 focus:bg-white/[0.09] focus:shadow-[0_0_0_3px_rgba(34,211,238,0.14),inset_0_1px_0_rgba(255,255,255,0.12)]"
+        className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
       />
     </label>
   );

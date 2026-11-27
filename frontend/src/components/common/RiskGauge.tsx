@@ -73,7 +73,7 @@ export function RiskGauge({ score, level, size = 220, label = "Risk Score" }: Pr
         />
       </svg>
       <div className="absolute inset-x-0 bottom-2 flex flex-col items-center">
-        <div className="text-[11px] uppercase tracking-widest text-muted-foreground">{label}</div>
+        <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
         <div className="font-mono text-4xl font-bold tabular-nums" style={{ color }}>
           {Math.round(v)}
         </div>

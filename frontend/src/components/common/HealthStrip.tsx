@@ -97,7 +97,7 @@ export function HealthStrip({ health, compact }: Props) {
             {c.icon}
           </div>
           <div className="min-w-0 leading-tight">
-            <div className="truncate text-[11px] uppercase tracking-wider text-muted-foreground">
+            <div className="truncate text-xs uppercase tracking-wider text-muted-foreground">
               {c.label}
             </div>
             <div className="truncate text-xs font-medium text-foreground">{c.detail}</div>

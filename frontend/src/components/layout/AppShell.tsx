@@ -1,7 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  ShieldCheck,
   LayoutDashboard,
   Users,
   ClipboardCheck,
@@ -27,6 +26,7 @@ import { EvidenceLightboxProvider } from "@/components/common/EvidenceLightbox";
 import { useDensity } from "@/hooks/use-density";
 import { clearAuthSession, getAuthSession, redirectForRole, roleCanAccess, type Role } from "@/lib/auth";
 import { api, ApiError } from "@/lib/api";
+import { BrandLockup, NoonMark } from "@/components/brand/Brand";
 
 const nav = [
   { to: "/monitor", label: "Live Monitor", icon: Activity, roles: ["instructor", "admin"] },
@@ -44,7 +44,7 @@ const nav = [
   { to: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },
 ] as const;
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, variant = "default" }: { children: React.ReactNode; variant?: "default" | "exam" }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [checked, setChecked] = useState(false);
@@ -87,26 +87,51 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const skip = (
+    <a
+      href="#main"
+      className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+    >
+      {variant === "exam" ? "Skip to question" : "Skip to content"}
+    </a>
+  );
+
+  if (variant === "exam") {
+    // Focused exam layout: no global navigation, search or account controls during an attempt.
+    return (
+      <EvidenceLightboxProvider>
+        {skip}
+        <div className="min-h-screen w-full bg-background">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 md:px-6">
+            <BrandLockup size="sm" />
+            <span className="hidden text-sm text-muted-foreground sm:inline">Examination</span>
+            <Link
+              to="/candidate"
+              className="ml-auto rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={(event) => {
+                if (!window.confirm("Leave the exam workspace? Your timer keeps running on the server.")) event.preventDefault();
+              }}
+            >
+              Exit to dashboard
+            </Link>
+          </header>
+          <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] p-3 md:p-6 focus:outline-none">
+            {children}
+          </main>
+        </div>
+      </EvidenceLightboxProvider>
+    );
+  }
+
   return (
     <EvidenceLightboxProvider>
+      {skip}
       <div className="relative min-h-screen w-full">
-        <div aria-hidden className="pointer-events-none fixed inset-0">
-          <div className="absolute inset-0 bg-grid opacity-30" />
-          <div
-            className="absolute -top-32 left-1/3 h-[40rem] w-[40rem] rounded-full blur-3xl"
-            style={{ background: "oklch(0.78 0.16 215 / 0.18)" }}
-          />
-          <div
-            className="absolute bottom-0 right-0 h-[36rem] w-[36rem] rounded-full blur-3xl"
-            style={{ background: "oklch(0.65 0.22 295 / 0.16)" }}
-          />
-        </div>
-
-          <div className="relative flex min-h-screen w-full">
+        <div className="relative flex min-h-screen w-full">
           <Sidebar role={role} />
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar />
-            <main className="min-w-0 flex-1 p-4 md:p-6">{children}</main>
+            <main id="main" tabIndex={-1} className="min-w-0 flex-1 p-4 focus:outline-none md:p-6">{children}</main>
           </div>
         </div>
       </div>
@@ -118,17 +143,11 @@ function Sidebar({ role }: { role?: Role }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const visibleNav = nav.filter((n) => role && (n.roles as readonly Role[]).includes(role));
   return (
-    <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r border-white/5 bg-background/40 backdrop-blur-xl md:flex md:flex-col">
-      <div className="flex items-center gap-2 p-4">
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-primary shadow-glow">
-          <ShieldCheck className="h-5 w-5 text-primary-foreground" aria-hidden />
-        </div>
-        <div className="leading-tight">
-          <div className="font-semibold">Nigran 360</div>
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-            Integrity OS
-          </div>
-        </div>
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-sidebar-border bg-sidebar md:flex md:flex-col">
+      <div className="flex items-center px-4 pb-2 pt-3">
+        <Link to="/" aria-label="Nigran 360 home" className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <BrandLockup size="md" />
+        </Link>
       </div>
       <nav className="mt-2 flex-1 space-y-1 px-2 pb-4" aria-label="Primary">
         {visibleNav.map((n) => {
@@ -152,19 +171,12 @@ function Sidebar({ role }: { role?: Role }) {
               />
               {n.label}
               {active && (
-                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_2px_oklch(0.78_0.16_215_/_0.7)]" />
+                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
               )}
             </Link>
           );
         })}
       </nav>
-      <div className="mx-3 mb-3 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-muted-foreground">
-        <div className="mb-1 font-medium text-foreground">Mode</div>
-        <ModeBadge />
-        <div className="mt-2 text-[11px]">
-          Press <kbd className="rounded bg-white/10 px-1">⌘K</kbd> to open the command palette.
-        </div>
-      </div>
     </aside>
   );
 }
@@ -175,15 +187,13 @@ function TopBar() {
   const { density, toggle } = useDensity();
   const navigate = useNavigate();
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-white/5 bg-background/40 px-4 backdrop-blur-xl md:px-6">
+    <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 md:px-6">
       <Link
         to="/"
         className="md:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-lg"
         aria-label="Nigran 360 home"
       >
-        <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-primary">
-          <ShieldCheck className="h-4 w-4 text-primary-foreground" aria-hidden />
-        </div>
+        <NoonMark className="h-8 w-8" />
       </Link>
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <LayoutDashboard className="h-4 w-4" aria-hidden />

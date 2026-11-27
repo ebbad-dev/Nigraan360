@@ -89,7 +89,7 @@ function ExamRunnerPage() {
 
   if (!attempt_id) {
     return (
-      <AppShell>
+      <AppShell variant="exam">
         <GlassCard className="mx-auto max-w-xl p-6 text-center">
           <ShieldAlert className="mx-auto h-10 w-10 text-amber-300" aria-hidden />
           <h1 className="mt-3 text-lg font-semibold">No exam attempt selected</h1>
@@ -104,7 +104,7 @@ function ExamRunnerPage() {
 
   if (attempt.isError && !attempt.data) {
     return (
-      <AppShell>
+      <AppShell variant="exam">
         <GlassCard className="mx-auto max-w-xl p-6 text-center">
           <CloudOff className="mx-auto h-10 w-10 text-amber-300" aria-hidden />
           <h1 className="mt-3 text-lg font-semibold">Could not load this attempt</h1>
@@ -117,7 +117,7 @@ function ExamRunnerPage() {
 
   if (!attempt.data) {
     return (
-      <AppShell>
+      <AppShell variant="exam">
         <GlassCard className="p-6">
           <LoadingSkeleton lines={8} />
         </GlassCard>
@@ -265,7 +265,7 @@ function Workspace({ attempt }: { attempt: ExamAttempt }) {
       return q ? !isBlank(q, fromRow(row)) : false;
     }).length;
     return (
-      <AppShell>
+      <AppShell variant="exam">
         <GlassCard className="mx-auto max-w-xl space-y-4 p-6" role="status">
           <div className="flex items-center gap-3">
             <Receipt className="h-8 w-8 text-emerald-300" aria-hidden />
@@ -310,7 +310,7 @@ function Workspace({ attempt }: { attempt: ExamAttempt }) {
   const locked = Boolean(closed) || remainingMs <= 0;
 
   return (
-    <AppShell>
+    <AppShell variant="exam">
       {sandbox && (
         <div className="mb-3 rounded-xl border border-violet-400/40 bg-violet-500/15 px-4 py-2 text-sm text-violet-100" role="note">
           SANDBOX PREVIEW — this attempt is isolated and will not affect results, analytics or candidate records.
@@ -370,7 +370,7 @@ function Workspace({ attempt }: { attempt: ExamAttempt }) {
         </GlassCard>
 
         <GlassCard className="min-h-[70vh] p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 pb-4">
+          <div className="sticky top-14 z-10 -mx-5 -mt-5 flex flex-wrap items-start justify-between gap-3 border-b border-border bg-card px-5 pb-4 pt-5 xl:static xl:mx-0 xl:mt-0 xl:bg-transparent xl:px-0 xl:pt-0">
             <div>
               <div className="text-xs uppercase tracking-wider text-muted-foreground">{attempt.exam.exam_code || attempt.exam_id}</div>
               <h1 className="mt-1 text-2xl font-semibold">{attempt.exam.title}</h1>
@@ -444,7 +444,7 @@ function Workspace({ attempt }: { attempt: ExamAttempt }) {
               <GlowButton className="mt-3 w-full" size="sm" variant="outline" onClick={() => document.documentElement.requestFullscreen?.().catch(() => undefined)}>
                 <Lock className="h-4 w-4" aria-hidden /> Enter fullscreen
               </GlowButton>
-              <p className="mt-2 text-[11px] text-muted-foreground">Signals are for human review only and are not treated as proof of misconduct.</p>
+              <p className="mt-2 text-xs text-muted-foreground">Signals are for human review only and are not treated as proof of misconduct.</p>
             </GlassCard>
           )}
         </div>

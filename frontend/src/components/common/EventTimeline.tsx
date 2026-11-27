@@ -64,14 +64,14 @@ export function EventTimeline({ events, limit }: { events: SessionEvent[]; limit
                 </span>
               )}
             </div>
-            <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
+            <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
               <span>{new Date(e.timestamp).toLocaleTimeString()}</span>
               {e.camera_source && (
                 <span className="uppercase tracking-wider">· {e.camera_source}</span>
               )}
               <span
                 className={cn(
-                  "ml-auto rounded px-1.5 py-0.5 uppercase tracking-wider text-[10px]",
+                  "ml-auto rounded px-1.5 py-0.5 uppercase tracking-wider text-xs",
                   sevStyles[e.severity],
                 )}
               >

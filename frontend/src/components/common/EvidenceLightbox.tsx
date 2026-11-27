@@ -352,7 +352,7 @@ function LightboxView({
 
             {/* Top-right camera source */}
             {current.camera_source && (
-              <div className="absolute right-3 top-3 rounded bg-black/60 px-2 py-1 text-[10px] uppercase tracking-wider backdrop-blur">
+              <div className="absolute right-3 top-3 rounded bg-black/60 px-2 py-1 text-xs uppercase tracking-wider backdrop-blur">
                 {current.camera_source}
               </div>
             )}
@@ -382,7 +382,7 @@ function LightboxView({
                 >
                   <ChevronRight className="h-5 w-5" />
                 </button>
-                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 rounded bg-black/60 px-2 py-1 text-[11px] backdrop-blur">
+                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 rounded bg-black/60 px-2 py-1 text-xs backdrop-blur">
                   {index + 1} / {items.length}
                 </div>
               </>
@@ -400,7 +400,7 @@ function LightboxView({
               >
                 <ZoomOut className="h-4 w-4" />
               </ToolbarButton>
-              <span className="min-w-[3ch] px-1 text-center text-[11px] tabular-nums text-white/80">
+              <span className="min-w-[3ch] px-1 text-center text-xs tabular-nums text-white/80">
                 {Math.round(zoom * 100)}%
               </span>
               <ToolbarButton
@@ -444,7 +444,7 @@ function LightboxView({
 
             {/* Zoom hint */}
             {hasImage && zoom === 1 && (
-              <div className="absolute right-3 top-10 rounded bg-black/50 px-2 py-1 text-[10px] text-white/60 backdrop-blur">
+              <div className="absolute right-3 top-10 rounded bg-black/50 px-2 py-1 text-xs text-white/60 backdrop-blur">
                 Click to zoom · Scroll to adjust
               </div>
             )}
@@ -530,7 +530,7 @@ function ToolbarButton({
 function Meta({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-2">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="mt-0.5 truncate text-foreground">{value}</div>
     </div>
   );
@@ -539,7 +539,7 @@ function Meta({ label, value }: { label: string; value: React.ReactNode }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mt-4">
-      <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {title}
       </h4>
       {children}

@@ -72,18 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Nigran 360" },
+      { title: "نگران 360 · Secure Examinations" },
       {
         name: "description",
         content:
-          "Nigran 360 � Secure Examination Management System for institutions and competition organizers.",
+          "Nigran 360 · Secure Examination Management System for institutions and competition organizers.",
       },
       { name: "author", content: "Nigran 360" },
       { property: "og:title", content: "Nigran 360" },
       {
         property: "og:description",
         content:
-          "Nigran 360 � Secure Examination Management System for institutions and competition organizers.",
+          "Nigran 360 · Secure Examination Management System for institutions and competition organizers.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -91,7 +91,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "twitter:description",
         content:
-          "Nigran 360 � Secure Examination Management System for institutions and competition organizers.",
+          "Nigran 360 · Secure Examination Management System for institutions and competition organizers.",
       },
     ],
     links: [
@@ -99,6 +99,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
     ],
   }),
   shellComponent: RootShell,

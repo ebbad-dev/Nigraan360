@@ -51,7 +51,7 @@ export function WorkspacePreferences({
             Focus layout (hide side panels)
             <input type="checkbox" checked={prefs.focusLayout} onChange={(e) => update({ focusLayout: e.target.checked })} />
           </label>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {saved
               ? "Saved in this browser for your account. Display only: it never changes timing, questions or marking."
               : "This browser is blocking storage, so these settings last only until you reload."}

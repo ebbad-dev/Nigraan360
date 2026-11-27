@@ -15,7 +15,7 @@ export function ModeBadge() {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px]",
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs",
         connected
           ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
           : "border-red-400/30 bg-red-400/10 text-red-200",

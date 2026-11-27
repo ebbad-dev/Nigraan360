@@ -59,7 +59,7 @@ export function RiskStoryCard({ risk, session, compact, className }: Props) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold">Risk story</h3>
-            <span className={cn("text-[11px] uppercase tracking-wider", tone)}>{levelLabel}</span>
+            <span className={cn("text-xs uppercase tracking-wider", tone)}>{levelLabel}</span>
           </div>
           <p
             className={cn(
@@ -87,7 +87,7 @@ export function RiskStoryCard({ risk, session, compact, className }: Props) {
             )}
           </p>
           {!compact && (
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               Summary generated from risk contributors. Instructor decision required for final
               outcome.
             </p>

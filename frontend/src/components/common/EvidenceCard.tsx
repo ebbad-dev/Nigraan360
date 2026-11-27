@@ -47,12 +47,12 @@ export function EvidenceCard({ item, index = 0, items, events, browser }: CardPr
             }}
           />
           <div className="absolute inset-0 bg-grid opacity-20" />
-          <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded bg-black/50 px-2 py-1 text-[11px] backdrop-blur">
+          <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded bg-black/50 px-2 py-1 text-xs backdrop-blur">
             {iconFor[item.type]}
             {item.label ?? item.type}
           </div>
           {item.camera_source && (
-            <div className="absolute right-2 top-2 rounded bg-black/50 px-2 py-1 text-[10px] uppercase tracking-wider backdrop-blur">
+            <div className="absolute right-2 top-2 rounded bg-black/50 px-2 py-1 text-xs uppercase tracking-wider backdrop-blur">
               {item.camera_source}
             </div>
           )}

@@ -128,7 +128,7 @@ function InstructorPage() {
               transition={{ delay: i * 0.05 }}
             >
               <GlassCard className="p-4">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">
                   {k.label}
                 </div>
                 <div
@@ -171,7 +171,7 @@ function InstructorPage() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-[11px]">
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-xs">
               {pieData.map((p) => (
                 <span key={p.name} className="flex items-center gap-1.5 text-muted-foreground">
                   <span
@@ -246,6 +246,7 @@ function InstructorPage() {
               ))}
             </div>
             <select
+              aria-label="Sort sessions"
               value={sort}
               onChange={(e) => setSort(e.target.value as "risk" | "time")}
               className="h-9 rounded-lg border border-white/10 bg-white/5 px-2 text-xs outline-none"
@@ -261,7 +262,7 @@ function InstructorPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
-                <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                   <Th>Student</Th>
                   <Th>Exam</Th>
                   <Th>Risk</Th>
@@ -282,7 +283,7 @@ function InstructorPage() {
                   >
                     <Td>
                       <div className="font-medium">{s.student.name}</div>
-                      <div className="text-[11px] text-muted-foreground">{s.student.email}</div>
+                      <div className="text-xs text-muted-foreground">{s.student.email}</div>
                     </Td>
                     <Td>{s.exam.title}</Td>
                     <Td>
@@ -303,7 +304,7 @@ function InstructorPage() {
                     <Td>
                       <span
                         className={cn(
-                          "rounded-md px-2 py-1 text-[11px] capitalize",
+                          "rounded-md px-2 py-1 text-xs capitalize",
                           s.review_status === "pending"
                             ? "bg-amber-400/10 text-amber-300"
                             : "bg-emerald-400/10 text-emerald-300",
@@ -422,9 +423,17 @@ function ExamManagement() {
       <div className="grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
         <div className="space-y-2">
           {(exams.data ?? []).map((exam) => (
-            <button
+            <div
               key={exam.id}
+              className={`flex items-start gap-2 rounded-xl border p-3 transition ${
+                selected?.id === exam.id
+                  ? "border-primary/50 bg-primary/10"
+                  : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+              }`}
+            >
+            <button
               type="button"
+              aria-pressed={selected?.id === exam.id}
               onClick={() => {
                 setSelectedId(exam.id);
                 setDraft({
@@ -445,19 +454,13 @@ function ExamManagement() {
                   shuffle_options: Boolean(exam.shuffle_options),
                 });
               }}
-              className={`w-full rounded-xl border p-3 text-left transition ${
-                selected?.id === exam.id
-                  ? "border-primary/50 bg-primary/10"
-                  : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
-              }`}
+              className="min-w-0 flex-1 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="font-medium">{exam.title}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {exam.exam_code || "No code"} · {exam.duration_minutes} min · {exam.assignment_count ?? 0} assigned
-                  </div>
-                </div>
+              <div className="font-medium">{exam.title}</div>
+              <div className="text-xs text-muted-foreground">
+                {exam.exam_code || "No code"} · {exam.duration_minutes} min · {exam.assignment_count ?? 0} assigned
+              </div>
+            </button>
                 <div className="flex flex-col items-end gap-1">
                   <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs capitalize">
                     {exam.status ?? "draft"}
@@ -466,15 +469,13 @@ function ExamManagement() {
                     <Link
                       to="/exam-results/$examId"
                       params={{ examId: exam.id }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-[10px] text-primary hover:text-primary/80 underline"
+                      className="text-xs text-primary hover:text-primary/80 underline"
                     >
                       Results &amp; Analytics
                     </Link>
                   )}
                 </div>
-              </div>
-            </button>
+            </div>
           ))}
           {!exams.isLoading && !exams.data?.length && (
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-muted-foreground">
@@ -988,7 +989,7 @@ function CandidateImport({ exam }: { exam: Exam }) {
         </button>
         <button type="button" className="ml-auto text-muted-foreground" onClick={() => setOpen(false)}>Close</button>
       </div>
-      <p className="text-[11px] text-muted-foreground">Columns: full_name, email. New accounts get a one-time temporary password; existing candidates are enrolled. Nothing is saved unless every row is valid.</p>
+      <p className="text-xs text-muted-foreground">Columns: full_name, email. New accounts get a one-time temporary password; existing candidates are enrolled. Nothing is saved unless every row is valid.</p>
       <textarea aria-label="Candidate import content" value={content} onChange={(event) => { setContent(event.target.value); setResult(null); }} rows={4} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-xs outline-none" />
       <div className="flex gap-2">
         <GlowButton size="sm" variant="ghost" disabled={!content.trim() || importCandidates.isPending} onClick={() => run(false)}>Validate</GlowButton>
@@ -1121,7 +1122,7 @@ function AttendancePanel({ exam }: { exam: Exam }) {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[680px] text-sm">
           <thead>
-            <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+            <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
               <Th>Student</Th>
               <Th>Roll No.</Th>
               <Th>Status</Th>
@@ -1135,7 +1136,7 @@ function AttendancePanel({ exam }: { exam: Exam }) {
               <tr key={row.assignment_id} className="border-t border-white/5">
                 <Td>
                   <div className="font-medium">{row.student_name}</div>
-                  <div className="text-[11px] text-muted-foreground">{row.student_email}</div>
+                  <div className="text-xs text-muted-foreground">{row.student_email}</div>
                 </Td>
                 <Td>{row.roll_number || "—"}</Td>
                 <Td>

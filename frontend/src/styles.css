@@ -1,9 +1,19 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/source-serif-4/600.css";
+@import "@fontsource/gulzar/arabic-400.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, "Segoe UI", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-urdu: "Gulzar", "Noto Nastaliq Urdu", "Urdu Typesetting", serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -56,69 +66,64 @@
 
 /* ProctorAI premium dark theme — futuristic AI security SaaS */
 :root {
-  --radius: 0.875rem;
+  --radius: 0.75rem;
 
-  --background: oklch(0.16 0.03 260);
-  --foreground: oklch(0.97 0.01 240);
+  --background: #15181e;
+  --foreground: #eceef2;
 
-  --card: oklch(0.21 0.035 260 / 0.6);
-  --card-foreground: oklch(0.97 0.01 240);
+  --card: #20242d;
+  --card-foreground: #eceef2;
 
-  --popover: oklch(0.19 0.03 260);
-  --popover-foreground: oklch(0.97 0.01 240);
+  --popover: #272c37;
+  --popover-foreground: #eceef2;
 
-  --primary: oklch(0.78 0.16 215);
-  --primary-foreground: oklch(0.12 0.04 260);
+  --primary: #9db1f5;
+  --primary-foreground: #10162b;
 
-  --secondary: oklch(0.26 0.04 260);
-  --secondary-foreground: oklch(0.97 0.01 240);
+  --secondary: #272c37;
+  --secondary-foreground: #eceef2;
 
-  --muted: oklch(0.24 0.03 260);
-  --muted-foreground: oklch(0.7 0.02 250);
+  --muted: #272c37;
+  --muted-foreground: #b8becb;
 
-  --accent: oklch(0.65 0.22 295);
-  --accent-foreground: oklch(0.97 0.01 240);
+  --accent: #e0a940;
+  --accent-foreground: #10162b;
 
-  --destructive: oklch(0.65 0.24 25);
-  --destructive-foreground: oklch(0.98 0.01 0);
+  --destructive: #f47c74;
+  --destructive-foreground: #10162b;
 
-  --border: oklch(1 0 0 / 0.08);
-  --input: oklch(1 0 0 / 0.1);
-  --ring: oklch(0.78 0.16 215);
+  --border: #303644;
+  --input: #6e7686;
+  --ring: #8ca4ff;
 
-  --chart-1: oklch(0.78 0.16 215);
-  --chart-2: oklch(0.65 0.22 295);
-  --chart-3: oklch(0.72 0.18 165);
-  --chart-4: oklch(0.78 0.18 75);
-  --chart-5: oklch(0.65 0.24 25);
+  --chart-1: #9db1f5;
+  --chart-2: #5fb3b3;
+  --chart-3: #e0a940;
+  --chart-4: #c983b0;
+  --chart-5: #9cc46a;
 
-  --sidebar: oklch(0.18 0.03 260);
-  --sidebar-foreground: oklch(0.95 0.01 240);
-  --sidebar-primary: oklch(0.78 0.16 215);
-  --sidebar-primary-foreground: oklch(0.12 0.04 260);
-  --sidebar-accent: oklch(0.24 0.03 260);
-  --sidebar-accent-foreground: oklch(0.97 0.01 240);
-  --sidebar-border: oklch(1 0 0 / 0.06);
-  --sidebar-ring: oklch(0.78 0.16 215);
+  --sidebar: #1c2230;
+  --sidebar-foreground: #e9ecf2;
+  --sidebar-primary: #9db1f5;
+  --sidebar-primary-foreground: #10162b;
+  --sidebar-accent: #2a3350;
+  --sidebar-accent-foreground: #e9ecf2;
+  --sidebar-border: #2a3040;
+  --sidebar-ring: #8ca4ff;
 
-  --risk-low: oklch(0.72 0.18 155);
-  --risk-medium: oklch(0.78 0.18 75);
-  --risk-high: oklch(0.7 0.2 35);
-  --risk-critical: oklch(0.6 0.26 20);
-  --cyan: oklch(0.82 0.15 200);
-  --violet: oklch(0.65 0.22 295);
+  --risk-low: #56c792;
+  --risk-medium: #f0b44c;
+  --risk-high: #f4a261;
+  --risk-critical: #f47c74;
+  --cyan: #9db1f5;
+  --violet: #9db1f5;
 
-  --gradient-primary: linear-gradient(135deg, oklch(0.78 0.16 215), oklch(0.65 0.22 295));
-  --gradient-glow: radial-gradient(
-    60% 60% at 50% 50%,
-    oklch(0.78 0.16 215 / 0.35),
-    transparent 70%
-  );
-  --shadow-glow:
-    0 0 0 1px oklch(0.78 0.16 215 / 0.18), 0 10px 40px -10px oklch(0.78 0.16 215 / 0.45);
-  --shadow-elegant: 0 20px 60px -20px oklch(0 0 0 / 0.6);
-  --glass-bg: oklch(0.22 0.035 260 / 0.55);
-  --glass-border: oklch(1 0 0 / 0.1);
+  --gradient-primary: #9db1f5;
+  --gradient-glow: none;
+  --shadow-glow: none;
+  --shadow-elegant: 0 12px 32px -12px rgba(0, 0, 0, 0.45);
+  --glass-bg: #20242d;
+  --glass-border: #303644;
 }
 
 .dark {
@@ -135,15 +140,7 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family:
-      ui-sans-serif,
-      system-ui,
-      -apple-system,
-      "Segoe UI",
-      Roboto,
-      "Helvetica Neue",
-      Arial,
-      sans-serif;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
 
@@ -365,4 +362,39 @@ html.contrast-high .glass-strong {
   background: oklch(0.1 0.02 260) !important;
   border-color: oklch(0.85 0 0 / 0.6) !important;
   backdrop-filter: none !important;
+}
+
+/* Brand typography */
+h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.font-urdu {
+  font-family: var(--font-urdu);
+}
+.glass,
+.glass-strong {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.text-gradient {
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: var(--primary) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+.glass-strong {
+  background: var(--popover);
+}
+.bg-aurora {
+  background: none;
 }
