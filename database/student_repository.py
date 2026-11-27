@@ -1,0 +1,289 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Any
+
+from core.session_lifecycle import SESSION_REVIEWED
+
+
+class StudentRepository:
+    def __init__(self, db):
+        self.db = db
+
+    def _tenant_for_session(self, session_id: str) -> str:
+        rows = self.db.query("SELECT tenant_id FROM Sessions WHERE session_id = ?", (session_id,))
+        if rows and rows[0].get("tenant_id"):
+            return str(rows[0]["tenant_id"])
+        return "tenant_default"
+
+    def upsert_session(
+        self,
+        session_id: str,
+        student_id: str = "",
+        student_name: str = "",
+        exam_code: str = "",
+        user_id: str = "",
+        exam_id: str = "",
+        roll_number: str = "",
+        tenant_id: str = "",
+        start_time: Any = None,
+        status: str = "Active",
+    ) -> None:
+        start_time = start_time or datetime.now(timezone.utc)
+        insert_tenant_id = tenant_id or "tenant_default"
+        self.db.execute(
+            """
+            MERGE Sessions AS target
+            USING (SELECT ? AS session_id) AS source
+            ON target.session_id = source.session_id
+            WHEN MATCHED THEN UPDATE SET
+                student_id = COALESCE(NULLIF(?, ''), target.student_id),
+                student_name = COALESCE(NULLIF(?, ''), target.student_name),
+                exam_code = COALESCE(NULLIF(?, ''), target.exam_code),
+                roll_number = COALESCE(NULLIF(?, ''), target.roll_number),
+                user_id = COALESCE(NULLIF(?, ''), target.user_id),
+                exam_id = COALESCE(NULLIF(?, ''), target.exam_id),
+                tenant_id = COALESCE(NULLIF(?, ''), target.tenant_id),
+                status = CASE
+                    WHEN target.status IS NULL OR target.status = 'Active' THEN ?
+                    ELSE target.status
+                END
+            WHEN NOT MATCHED THEN INSERT
+                (session_id, tenant_id, user_id, exam_id, student_id, student_name, roll_number, exam_code, start_time, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            """,
+            (
+                session_id,
+                student_id,
+                student_name,
+                exam_code,
+                roll_number,
+                user_id,
+                exam_id,
+                tenant_id,
+                status,
+                session_id,
+                insert_tenant_id,
+                user_id,
+                exam_id,
+                student_id,
+                student_name,
+                roll_number,
+                exam_code,
+                start_time,
+                status,
+            ),
+        )
+
+    def insert_event(
+        self,
+        session_id: str,
+        student_id: str,
+        event_type: str,
+        event_time: Any,
+        risk_points: int,
+        notes: str,
+        tenant_id: str = "",
+        confidence: float | None = None,
+        model_name: str = "",
+        detection_class: str = "",
+        bounding_box_json: str = "",
+        evidence_id: str = "",
+        ingest_id: str = "",
+    ) -> bool:
+        tenant_id = tenant_id or self._tenant_for_session(session_id)
+        inserted = self.db.execute(
+            """
+            INSERT INTO Events (
+                tenant_id, session_id, student_id, event_type, event_time, risk_points,
+                confidence, model_name, detection_class, bounding_box_json, evidence_id, ingest_id, notes
+            )
+            SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            WHERE EXISTS (
+                SELECT 1 FROM Sessions WHERE session_id = ? AND status = 'Active'
+            )
+            """,
+            (
+                tenant_id,
+                session_id,
+                student_id,
+                event_type,
+                event_time,
+                risk_points,
+                confidence,
+                model_name,
+                detection_class,
+                bounding_box_json,
+                evidence_id,
+                ingest_id or None,
+                notes,
+                session_id,
+            ),
+        )
+        return inserted != 0
+
+    def event_ingest_exists(self, ingest_id: str) -> bool:
+        if not ingest_id:
+            return False
+        rows = self.db.query("SELECT TOP 1 1 AS found FROM Events WHERE ingest_id = ?", (ingest_id,))
+        return bool(rows)
+
+    def insert_browser_activity(
+        self,
+        session_id: str,
+        activity_type: str,
+        event_time: Any,
+        *,
+        url: str = "",
+        title: str = "",
+        category: str = "Unknown",
+        risk_level: str = "low",
+        risk_points: int = 0,
+        source: str = "",
+        ingest_id: str = "",
+        tenant_id: str = "",
+    ) -> bool:
+        tenant_id = tenant_id or self._tenant_for_session(session_id)
+        inserted = self.db.execute(
+            """
+            INSERT INTO BrowserActivity (
+                tenant_id, session_id, activity_type, url, title, category,
+                risk_level, risk_points, source, ingest_id, event_time
+            )
+            SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            WHERE EXISTS (
+                SELECT 1 FROM Sessions WHERE session_id = ? AND status = 'Active'
+            )
+            """,
+            (
+                tenant_id,
+                session_id,
+                activity_type,
+                url,
+                title,
+                category,
+                risk_level,
+                int(risk_points or 0),
+                source,
+                ingest_id or None,
+                event_time,
+                session_id,
+            ),
+        )
+        return inserted != 0
+
+    def browser_activity_ingest_exists(self, ingest_id: str) -> bool:
+        if not ingest_id:
+            return False
+        rows = self.db.query("SELECT TOP 1 1 AS found FROM BrowserActivity WHERE ingest_id = ?", (ingest_id,))
+        return bool(rows)
+
+    def get_browser_activity(self, session_id: str) -> list[dict]:
+        return self.db.query(
+            """
+            SELECT activity_id, tenant_id, session_id, activity_type, url, title,
+                   category, risk_level, risk_points, source, ingest_id, event_time
+            FROM BrowserActivity
+            WHERE session_id = ?
+            ORDER BY event_time ASC, activity_id ASC
+            """,
+            (session_id,),
+        )
+
+    def get_all_sessions(self) -> list[dict]:
+        return self.db.query(
+            """
+            SELECT
+                s.session_id,
+                s.tenant_id,
+                s.user_id,
+                s.exam_id,
+                s.student_id,
+                s.student_name,
+                s.roll_number,
+                s.exam_code,
+                s.start_time,
+                s.end_time,
+                COALESCE(s.status, 'Completed') AS status,
+                COALESCE(s.final_score, SUM(COALESCE(e.risk_points, 0))) AS final_score,
+                s.review_mark,
+                s.instructor_notes
+            FROM Sessions s
+            LEFT JOIN Events e ON e.session_id = s.session_id
+            GROUP BY s.session_id, s.tenant_id, s.user_id, s.exam_id, s.student_id, s.student_name, s.roll_number, s.exam_code, s.start_time,
+                     s.end_time, s.status, s.final_score, s.review_mark, s.instructor_notes
+            ORDER BY s.start_time DESC
+            """
+        )
+
+    def get_session(self, session_id: str) -> dict | None:
+        rows = self.db.query(
+            """
+            SELECT
+                s.session_id,
+                s.tenant_id,
+                s.user_id,
+                s.exam_id,
+                s.student_id,
+                s.student_name,
+                s.roll_number,
+                s.exam_code,
+                s.start_time,
+                s.end_time,
+                COALESCE(s.status, 'Completed') AS status,
+                COALESCE(s.final_score, SUM(COALESCE(e.risk_points, 0))) AS final_score,
+                s.review_mark,
+                s.instructor_notes
+            FROM Sessions s
+            LEFT JOIN Events e ON e.session_id = s.session_id
+            WHERE s.session_id = ?
+            GROUP BY s.session_id, s.tenant_id, s.user_id, s.exam_id, s.student_id, s.student_name, s.roll_number, s.exam_code, s.start_time,
+                     s.end_time, s.status, s.final_score, s.review_mark, s.instructor_notes
+            """,
+            (session_id,),
+        )
+        return rows[0] if rows else None
+
+    def get_session_status(self, session_id: str) -> str | None:
+        rows = self.db.query(
+            "SELECT status FROM Sessions WHERE session_id = ?",
+            (session_id,),
+        )
+        return str(rows[0].get("status") or "") if rows else None
+
+    def get_active_session_for_user(self, user_id: str) -> dict | None:
+        rows = self.db.query(
+            """
+            SELECT TOP 1 session_id, tenant_id, user_id, exam_id, student_id,
+                   student_name, roll_number, exam_code, start_time, status
+            FROM Sessions
+            WHERE user_id = ? AND status = 'Active'
+            ORDER BY start_time DESC
+            """,
+            (user_id,),
+        )
+        return rows[0] if rows else None
+
+    def get_events(self, session_id: str) -> list[dict]:
+        return self.db.query(
+            """
+            SELECT event_id, tenant_id, session_id, student_id, event_type, event_time, risk_points,
+                   confidence, model_name, detection_class, bounding_box_json, evidence_id, notes
+            FROM Events
+            WHERE session_id = ?
+            ORDER BY event_time ASC
+            """,
+            (session_id,),
+        )
+
+    def update_session_review(self, session_id: str, review_mark: str, instructor_notes: str) -> bool:
+        updated = self.db.execute(
+            """
+            UPDATE Sessions
+            SET review_mark = ?, instructor_notes = ?, status = ?
+            WHERE session_id = ?
+              AND status IN ('Submitted', 'Ended', 'Completed', 'Reviewed')
+            """,
+            (review_mark, instructor_notes, SESSION_REVIEWED, session_id),
+        )
+        return updated != 0
