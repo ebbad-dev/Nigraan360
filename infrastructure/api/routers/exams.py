@@ -21,6 +21,9 @@ class ExamRequest(BaseModel):
     end_time: Optional[str] = None
     status: str = "draft"
     rules: Any = None
+    instructions: str = Field(default="", max_length=5000)
+    shuffle_questions: bool = False
+    shuffle_options: bool = False
 
 
 class QuestionOptionRequest(BaseModel):
@@ -37,6 +40,10 @@ class ExamQuestionRequest(BaseModel):
     marks: int = 1
     sort_order: int = 0
     status: str = "active"
+    category: str = Field(default="", max_length=128)
+    difficulty: str = "medium"
+    marking_scheme: str = ""
+    source_question_id: str = ""
     options: List[QuestionOptionRequest] = Field(default_factory=list)
 
 

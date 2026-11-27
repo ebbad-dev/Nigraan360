@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any, Callable, List, Optional
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from services.exam_service import ExamService, ExamServiceError
 
@@ -15,9 +15,16 @@ class AttemptStartRequest(BaseModel):
 
 
 class AttemptResponseRequest(BaseModel):
-    question_id: str
-    selected_option_id: str = ""
-    response_text: str = ""
+    question_id: str = Field(max_length=64)
+    selected_option_id: str = Field(default="", max_length=64)
+    selected_option_ids: List[str] = Field(default_factory=list, max_length=10)
+    response_text: str = Field(default="", max_length=10000)
+    # "answer" saves the answer (and optional flag); "flag" only changes the review flag.
+    kind: str = Field(default="answer", pattern="^(answer|flag)$")
+    flagged: Optional[bool] = None
+    # Client idempotency key and per-attempt sequence for safe offline retries.
+    mutation_id: str = Field(default="", max_length=64)
+    client_seq: Optional[int] = Field(default=None, ge=0)
 
 
 class AttemptSubmitRequest(BaseModel):
@@ -65,17 +72,20 @@ def create_attempt_router(
         attempt_id: str,
         req: AttemptResponseRequest,
         request: Request,
-        user: dict = Depends(require_roles("student")),
+        user: dict = Depends(current_user),
     ):
+        # Ownership is enforced in the service: only the attempt's own candidate (or the
+        # examiner in their own sandbox attempt) can write to it.
         response = invoke(service.save_response, attempt_id, req.model_dump(), user)
-        audit(
-            "attempt.response_saved",
-            actor=user,
-            resource_type="attempt",
-            resource_id=attempt_id,
-            details={"question_id": req.question_id},
-            request=request,
-        )
+        if response.get("status") == "saved":
+            audit(
+                "attempt.response_saved",
+                actor=user,
+                resource_type="attempt",
+                resource_id=attempt_id,
+                details={"question_id": req.question_id, "kind": req.kind},
+                request=request,
+            )
         return response
 
     @router.post("/attempts/{attempt_id}/submit")
@@ -83,7 +93,7 @@ def create_attempt_router(
         attempt_id: str,
         req: AttemptSubmitRequest,
         request: Request,
-        user: dict = Depends(require_roles("student")),
+        user: dict = Depends(current_user),
     ):
         result = invoke(service.submit_attempt, attempt_id, req.generate_report, user)
         audit(
@@ -114,5 +124,22 @@ def create_attempt_router(
         user: dict = Depends(require_roles("instructor", "admin")),
     ):
         return invoke(service.attempts_for_exam, exam_id, user)
+
+    @router.post("/exams/{exam_id}/sandbox")
+    def start_sandbox(
+        exam_id: str,
+        request: Request,
+        user: dict = Depends(require_roles("instructor", "admin")),
+    ):
+        attempt = invoke(service.start_sandbox_attempt, exam_id, user)
+        audit(
+            "attempt.sandbox_started",
+            actor=user,
+            resource_type="attempt",
+            resource_id=attempt["attempt_id"],
+            details={"exam_id": exam_id},
+            request=request,
+        )
+        return attempt
 
     return router

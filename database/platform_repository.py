@@ -648,6 +648,7 @@ class PlatformRepository:
                    roll_number, status, started_at, submitted_at, score, max_score
             FROM ExamAttempts
             WHERE exam_id = ? AND user_id = ? AND status = 'submitted'
+              AND COALESCE(attempt_type, 'real') = 'real'
             ORDER BY submitted_at DESC
             """,
             (exam_id, user_id),
@@ -658,7 +659,7 @@ class PlatformRepository:
         rows = self.db.query(
             """
             SELECT TOP 1 attempt_id, tenant_id, exam_id, assignment_id, session_id, user_id,
-                   roll_number, status, started_at, submitted_at, score, max_score
+                   roll_number, status, started_at, submitted_at, score, max_score, deadline_at
             FROM ExamAttempts
             WHERE exam_id = ? AND user_id = ? AND status = 'in_progress'
             ORDER BY started_at DESC
@@ -672,7 +673,7 @@ class PlatformRepository:
             """
             SELECT TOP 1 a.attempt_id, a.tenant_id, a.exam_id, a.assignment_id, a.session_id,
                    a.user_id, a.roll_number, a.status, a.started_at, a.submitted_at,
-                   a.score, a.max_score, e.duration_minutes
+                   a.score, a.max_score, a.deadline_at, e.duration_minutes
             FROM ExamAttempts a
             JOIN Exams e ON e.exam_id = a.exam_id
             WHERE a.user_id = ? AND a.status = 'in_progress'
@@ -737,6 +738,8 @@ class PlatformRepository:
             """
             SELECT a.attempt_id, a.tenant_id, a.exam_id, a.assignment_id, a.session_id, a.user_id,
                    a.roll_number, a.status, a.started_at, a.submitted_at, a.score, a.max_score,
+                   a.deadline_at, COALESCE(a.attempt_type, 'real') AS attempt_type, a.snapshot_json,
+                   a.grading_status, e.end_time AS exam_end_time, e.results_published_at,
                    e.exam_code, e.title AS exam_title, e.duration_minutes, e.total_marks,
                    u.email AS student_email, u.full_name AS student_name
             FROM ExamAttempts a
@@ -758,7 +761,7 @@ class PlatformRepository:
             FROM ExamAttempts a
             JOIN Users u ON u.user_id = a.user_id
             LEFT JOIN Events ev ON ev.session_id = a.session_id
-            WHERE a.exam_id = ?
+            WHERE a.exam_id = ? AND COALESCE(a.attempt_type, 'real') = 'real'
             GROUP BY a.attempt_id, a.tenant_id, a.exam_id, a.assignment_id, a.session_id, a.user_id,
                      a.roll_number, a.status, a.started_at, a.submitted_at, a.score, a.max_score,
                      u.email, u.full_name
@@ -939,6 +942,7 @@ class PlatformRepository:
                        submitted_at, score, max_score
                 FROM ExamAttempts ea
                 WHERE ea.exam_id = a.exam_id AND ea.user_id = a.student_user_id
+                  AND COALESCE(ea.attempt_type, 'real') = 'real'
                 ORDER BY COALESCE(ea.submitted_at, ea.started_at) DESC
             ) latest
             OUTER APPLY (

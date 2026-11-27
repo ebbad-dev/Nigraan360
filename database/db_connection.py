@@ -64,6 +64,7 @@ class DatabaseConnection:
         apply_migrations(self, self.registered_migrations())
 
     def registered_migrations(self):
+        from database.nigran_schema import apply_nigran360_schema
         from database.schema_migrations import Migration
 
         return (
@@ -72,6 +73,12 @@ class DatabaseConnection:
                 description="Phase 1 SQL Server baseline with durable monitoring and lifecycle integrity",
                 revision="phase1-baseline-v1",
                 apply=self._initialize_schema_baseline,
+            ),
+            Migration(
+                migration_id="20261127_0002_nigran360",
+                description="Nigran 360 question bank, attempt snapshots, deadlines, grading, results, announcements and verifiable reports",
+                revision="nigran360-v1",
+                apply=lambda: apply_nigran360_schema(self),
             ),
         )
 

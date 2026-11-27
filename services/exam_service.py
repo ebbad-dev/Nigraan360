@@ -8,7 +8,9 @@ from typing import Any, Callable
 
 from core.security import new_id
 from core.session_lifecycle import is_active_session
+from database.assessment_repository import AssessmentRepository
 from database.student_repository import StudentRepository
+from services import assessment as rules
 
 
 class ExamServiceError(Exception):
@@ -72,6 +74,11 @@ def format_exam(row: dict) -> dict:
         "assignment_id": row.get("assignment_id"),
         "assignment_status": row.get("assignment_status"),
         "assignment_count": int(row.get("assignment_count") or 0),
+        "instructions": row.get("instructions") or "",
+        "shuffle_questions": bool(row.get("shuffle_questions")),
+        "shuffle_options": bool(row.get("shuffle_options")),
+        "results_published_at": iso(row.get("results_published_at")) if row.get("results_published_at") else None,
+        "lifecycle": rules.exam_lifecycle(row, utc_now()),
     }
 
 
@@ -96,17 +103,27 @@ def format_question(row: dict, *, include_correct: bool = True) -> dict:
         "marks": int(row.get("marks") or 1),
         "sort_order": int(row.get("sort_order") or 0),
         "status": row.get("status") or "active",
+        "category": row.get("category") or "",
+        "difficulty": row.get("difficulty") or "medium",
+        "marking_scheme": row.get("marking_scheme") or "",
+        "source_question_id": row.get("source_question_id") or None,
         "options": options,
     }
 
 
 def format_attempt_response(row: dict, *, include_grading: bool = False) -> dict:
+    selected_ids = row.get("selected_option_ids")
+    if selected_ids is None:
+        selected_ids = [row["selected_option_id"]] if row.get("selected_option_id") else []
     payload = {
         "response_id": row.get("response_id"),
         "attempt_id": row.get("attempt_id"),
         "question_id": row.get("question_id"),
         "selected_option_id": row.get("selected_option_id"),
+        "selected_option_ids": selected_ids,
         "response_text": row.get("response_text"),
+        "flagged": bool(row.get("flagged")),
+        "client_seq": row.get("client_seq"),
         "answered_at": iso(row.get("answered_at")) if row.get("answered_at") else None,
         "updated_at": iso(row.get("updated_at")) if row.get("updated_at") else None,
     }
@@ -115,6 +132,8 @@ def format_attempt_response(row: dict, *, include_grading: bool = False) -> dict
             bool(row.get("is_correct")) if row.get("is_correct") is not None else None
         )
         payload["awarded_marks"] = int(row.get("awarded_marks") or 0)
+        payload["grading_status"] = row.get("grading_status") or "auto_graded"
+        payload["feedback"] = row.get("feedback") or ""
     return payload
 
 
@@ -124,8 +143,15 @@ def format_attempt(
     questions: list[dict] | None = None,
     responses: list[dict] | None = None,
     include_response_grading: bool = False,
+    hide_score: bool = False,
 ) -> dict:
+    deadline = rules.attempt_deadline(row)
     return {
+        "server_now": iso(utc_now()),
+        "deadline_at": iso(deadline) if deadline else None,
+        "attempt_type": row.get("attempt_type") or "real",
+        "grading_status": row.get("grading_status") or ("graded" if row.get("status") == "submitted" else None),
+        "results_visible": not hide_score,
         "attempt_id": row.get("attempt_id"),
         "tenant_id": row.get("tenant_id") or "tenant_default",
         "exam_id": row.get("exam_id"),
@@ -136,7 +162,7 @@ def format_attempt(
         "status": row.get("status") or "in_progress",
         "started_at": iso(row.get("started_at")) if row.get("started_at") else None,
         "submitted_at": iso(row.get("submitted_at")) if row.get("submitted_at") else None,
-        "score": int(row.get("score") or 0),
+        "score": None if hide_score else int(row.get("score") or 0),
         "max_score": int(row.get("max_score") or 0),
         "risk_score": min(int(row.get("risk_score") or 0), 100),
         "exam": {
@@ -203,10 +229,18 @@ class ExamService:
             for ch in (payload.get("exam_code") or "").upper().strip()
             if ch.isalnum() or ch in "-_"
         )
-        for key in ("title", "description", "semester", "subject", "department"):
+        for key in ("title", "description", "semester", "subject", "department", "instructions"):
             payload[key] = (payload.get(key) or "").strip()
         if not payload["title"]:
             self._fail(422, "validation_error", "Exam title is required.")
+        if len(payload["title"]) > 255:
+            self._fail(422, "validation_error", "Exam title must be 255 characters or fewer.")
+        if len(payload["instructions"]) > 5000:
+            self._fail(422, "validation_error", "Instructions must be 5000 characters or fewer.")
+        if int(payload.get("duration_minutes") or 0) > 600:
+            self._fail(422, "validation_error", "Exam duration cannot exceed 600 minutes.")
+        payload["shuffle_questions"] = bool(payload.get("shuffle_questions"))
+        payload["shuffle_options"] = bool(payload.get("shuffle_options"))
         if int(payload.get("total_marks") or 0) < 0:
             self._fail(422, "validation_error", "Total marks cannot be negative.")
         payload["status"] = self.validate_exam_status(payload.get("status") or "draft")
@@ -248,41 +282,26 @@ class ExamService:
         return normalized
 
     def validate_question_payload(self, data: dict) -> dict:
-        payload = dict(data)
-        payload["question_text"] = (payload.get("question_text") or "").strip()
-        payload["question_type"] = (payload.get("question_type") or "mcq").strip().lower()
-        if payload["question_type"] != "mcq":
-            self._fail(422, "validation_error", "Only MCQ questions are supported in this version.")
-        if len(payload["question_text"]) < 3:
-            self._fail(422, "validation_error", "Question text is required.")
-        if int(payload.get("marks") or 0) < 1:
-            self._fail(422, "validation_error", "Question marks must be at least 1.")
-        clean_options = []
-        for index, option in enumerate(payload.get("options") or []):
-            text = str(option.get("option_text") or "").strip()
-            if not text:
-                continue
-            clean_options.append(
-                {
-                    "option_id": option.get("option_id") or "",
-                    "option_text": text,
-                    "is_correct": bool(option.get("is_correct")),
-                    "sort_order": int(
-                        option.get("sort_order")
-                        if option.get("sort_order") is not None
-                        else index
-                    ),
-                }
-            )
-        if len(clean_options) < 2:
-            self._fail(422, "validation_error", "Add at least two answer options.")
-        if not any(option["is_correct"] for option in clean_options):
-            self._fail(422, "validation_error", "Mark one option as correct.")
-        payload["options"] = clean_options
-        return payload
+        try:
+            return rules.validate_question(data)
+        except rules.AssessmentError as exc:
+            raise ExamServiceError(422, exc.error, exc.message) from exc
+
+    def _assess(self) -> AssessmentRepository:
+        return AssessmentRepository(self.database_provider())
+
+    def _exam_with_extras(self, row: dict) -> dict:
+        return {**row, **self._assess().exam_extras(row["exam_id"])} if row else row
+
+    def _questions_with_meta(self, exam_id: str, questions: list[dict]) -> list[dict]:
+        meta = self._assess().question_meta(exam_id)
+        return [{**question, **meta.get(question.get("question_id"), {})} for question in questions]
 
     def list_exams(self, user: dict) -> list[dict]:
-        return [format_exam(row) for row in self.repository_provider().list_exams(user)]
+        rows = self.repository_provider().list_exams(user)
+        if user["role"] == "student":
+            rows = [row for row in rows if (row.get("status") or "").lower() in {"published", "scheduled", "closed"}]
+        return [format_exam(self._exam_with_extras(row)) for row in rows]
 
     def create_exam(self, data: dict, user: dict) -> dict:
         payload = self.validate_exam_payload(data)
@@ -297,22 +316,29 @@ class ExamService:
             user["user_id"],
             tenant_id(user),
         )
-        return format_exam(exam)
+        self._assess().update_exam_extras(
+            exam["exam_id"],
+            instructions=payload["instructions"],
+            shuffle_questions=payload["shuffle_questions"],
+            shuffle_options=payload["shuffle_options"],
+        )
+        return format_exam(self._exam_with_extras(exam))
 
     def get_exam(self, exam_id: str, user: dict) -> dict:
         repo = self.repository_provider()
         row = repo.get_exam(exam_id)
         if not row:
             self._fail(404, "not_found", "Exam not found.")
-        if user["role"] == "student" and not repo.exam_assigned_to_student(
-            exam_id, user["user_id"]
-        ):
-            self._fail(403, "forbidden", "This exam is not assigned to you.")
+        if user["role"] == "student":
+            if not repo.exam_assigned_to_student(exam_id, user["user_id"]):
+                self._fail(403, "forbidden", "This exam is not assigned to you.")
+            if (row.get("status") or "").lower() in {"draft", "archived"}:
+                self._fail(403, "exam_unavailable", "This exam is not available yet.")
         if user["role"] == "instructor" and (
             row.get("tenant_id") or "tenant_default"
         ) != tenant_id(user):
             self._fail(403, "forbidden", "This exam belongs to another institution.")
-        return format_exam(row)
+        return format_exam(self._exam_with_extras(row))
 
     def update_exam(self, exam_id: str, data: dict, user: dict) -> dict:
         self.require_management_access(exam_id, user)
@@ -327,35 +353,42 @@ class ExamService:
         row = repo.update_exam(exam_id, payload)
         if not row:
             self._fail(404, "not_found", "Exam not found.")
-        return format_exam(row)
+        self._assess().update_exam_extras(
+            exam_id,
+            instructions=payload["instructions"],
+            shuffle_questions=payload["shuffle_questions"],
+            shuffle_options=payload["shuffle_options"],
+        )
+        return format_exam(self._exam_with_extras(row))
 
     def publish_exam(self, exam_id: str, user: dict) -> dict:
         repo = self.repository_provider()
         exam = self.require_management_access(exam_id, user)
         declared_marks = int(exam.get("total_marks") or 0)
         question_marks = self.validate_exam_content(exam_id, declared_marks)
+        if exam.get("start_time") and exam.get("end_time"):
+            if parse_datetime(exam["end_time"]) <= self.now():
+                self._fail(422, "validation_error", "The exam window has already ended. Update the schedule before publishing.")
         if declared_marks == 0:
             repo.update_exam(exam_id, {"total_marks": question_marks})
-        return format_exam(repo.publish_exam(exam_id))
+        return format_exam(self._exam_with_extras(repo.publish_exam(exam_id)))
 
     def list_questions(self, exam_id: str, user: dict) -> list[dict]:
         repo = self.repository_provider()
         row = repo.get_exam(exam_id)
         if not row:
             self._fail(404, "not_found", "Exam not found.")
-        include_correct = user["role"] in {"instructor", "admin"}
-        if user["role"] == "student" and not repo.exam_assigned_to_student(
-            exam_id, user["user_id"]
-        ):
-            self._fail(403, "forbidden", "This exam is not assigned to you.")
+        if user["role"] == "student":
+            # Candidates only ever see questions inside their own attempt (frozen snapshot).
+            self._fail(403, "forbidden", "Questions are available only inside your exam attempt.")
         if user["role"] == "instructor" and (
             row.get("tenant_id") or "tenant_default"
         ) != tenant_id(user):
             self._fail(403, "forbidden", "This exam belongs to another institution.")
         return [
-            format_question(question, include_correct=include_correct)
-            for question in repo.list_exam_questions(
-                exam_id, include_correct=include_correct
+            format_question(question, include_correct=True)
+            for question in self._questions_with_meta(
+                exam_id, repo.list_exam_questions(exam_id, include_correct=True)
             )
         ]
 
@@ -363,14 +396,22 @@ class ExamService:
         repo = self.repository_provider()
         exam = self.require_management_access(exam_id, user)
         self.require_content_editable(exam)
+        payload = self.validate_question_payload(data)
         question = repo.upsert_question(
             exam_id,
-            self.validate_question_payload(data),
+            payload,
             exam.get("tenant_id") or tenant_id(user),
+        )
+        self._assess().set_question_meta(
+            question["question_id"],
+            category=payload.get("category") or "",
+            difficulty=payload.get("difficulty") or "medium",
+            marking_scheme=payload.get("marking_scheme") or "",
+            source_question_id=str(data.get("source_question_id") or ""),
         )
         rows = [
             row
-            for row in repo.list_exam_questions(exam_id, include_correct=True)
+            for row in self._questions_with_meta(exam_id, repo.list_exam_questions(exam_id, include_correct=True))
             if row.get("question_id") == question.get("question_id")
         ]
         return format_question(rows[0]) if rows else format_question(question)
@@ -388,15 +429,22 @@ class ExamService:
         existing = repo.get_question(question_id)
         if not existing or existing.get("exam_id") != exam_id:
             self._fail(404, "not_found", "Question not found.")
+        payload = self.validate_question_payload(data)
         repo.upsert_question(
             exam_id,
-            self.validate_question_payload(data),
+            payload,
             exam.get("tenant_id") or tenant_id(user),
             question_id,
         )
+        self._assess().set_question_meta(
+            question_id,
+            category=payload.get("category") or "",
+            difficulty=payload.get("difficulty") or "medium",
+            marking_scheme=payload.get("marking_scheme") or "",
+        )
         rows = [
             row
-            for row in repo.list_exam_questions(exam_id, include_correct=True)
+            for row in self._questions_with_meta(exam_id, repo.list_exam_questions(exam_id, include_correct=True))
             if row.get("question_id") == question_id
         ]
         return format_question(rows[0]) if rows else {}
@@ -550,7 +598,7 @@ class ExamService:
         if active and self.attempt_expired(
             {**active, "duration_minutes": exam.get("duration_minutes")}
         ):
-            repo.submit_attempt(active["attempt_id"])
+            self.finalize_attempt(active["attempt_id"])
             self._stop_active_proctor(active.get("session_id") or "")
             self._fail(
                 409,
@@ -563,7 +611,7 @@ class ExamService:
             competing = repo.active_attempt_for_user(user["user_id"])
             if competing:
                 if self.attempt_expired(competing):
-                    repo.submit_attempt(competing["attempt_id"])
+                    self.finalize_attempt(competing["attempt_id"])
                     self._stop_active_proctor(competing.get("session_id") or "")
                     self._fail(
                         409,
@@ -709,108 +757,194 @@ class ExamService:
                 user["user_id"],
                 exam.get("exam_code") or exam_id,
             )
-        questions = [
-            format_question(question, include_correct=False)
-            for question in repo.list_exam_questions(exam_id, include_correct=False)
-        ]
-        return format_attempt(
-            attempt,
-            questions=questions,
-            responses=repo.get_attempt_responses(attempt["attempt_id"]),
+        self._freeze_attempt(attempt["attempt_id"], exam, rules.ATTEMPT_REAL)
+        return self.get_attempt(attempt["attempt_id"], user)
+
+    # ── Attempt engine (snapshot, deadline, typed idempotent saves) ─────────
+
+    def _freeze_attempt(self, attempt_id: str, exam: dict, attempt_type: str) -> None:
+        """Freeze the paper (questions, order, options, marks, scheme) and the deadline once."""
+        repo = self.repository_provider()
+        assess = self._assess()
+        attempt = repo.get_attempt(attempt_id) or {}
+        if attempt.get("snapshot_json"):
+            return
+        extras = assess.exam_extras(exam["exam_id"])
+        questions = self._questions_with_meta(
+            exam["exam_id"], repo.list_exam_questions(exam["exam_id"], include_correct=True)
         )
+        snapshot = rules.build_snapshot(
+            questions,
+            shuffle_questions=bool(extras.get("shuffle_questions")),
+            shuffle_options=bool(extras.get("shuffle_options")),
+            seed=attempt_id,
+        )
+        deadline = rules.compute_deadline(
+            attempt.get("started_at") or self.now(),
+            exam.get("duration_minutes"),
+            None if attempt_type == rules.ATTEMPT_SANDBOX else exam.get("end_time"),
+        )
+        assess.initialize_attempt(
+            attempt_id,
+            deadline_at=deadline,
+            snapshot=snapshot,
+            attempt_type=attempt_type,
+            max_score=rules.snapshot_max_score(snapshot),
+        )
+
+    def _attempt_paper(self, attempt: dict) -> dict:
+        """The frozen snapshot, or a live-built one for legacy attempts started before snapshots."""
+        snapshot = rules.load_snapshot(attempt.get("snapshot_json"))
+        if snapshot:
+            return snapshot
+        questions = self._questions_with_meta(
+            attempt["exam_id"],
+            self.repository_provider().list_exam_questions(attempt["exam_id"], include_correct=True),
+        )
+        return rules.build_snapshot(questions)
+
+    def _results_visible(self, attempt: dict) -> bool:
+        return bool(
+            attempt.get("status") == "submitted"
+            and attempt.get("results_published_at")
+            and (attempt.get("grading_status") or "graded") != rules.GRADE_PENDING
+        )
+
+    def _load_attempt_for_owner(self, attempt_id: str, user: dict) -> dict:
+        repo = self.repository_provider()
+        attempt = repo.get_attempt(attempt_id)
+        if not attempt:
+            self._fail(404, "not_found", "Attempt not found.")
+        if attempt.get("user_id") != user["user_id"]:
+            self._fail(403, "forbidden", "You can only access your own attempt.")
+        return attempt
+
+    def _ensure_still_eligible(self, attempt: dict) -> None:
+        if (attempt.get("attempt_type") or "real") != rules.ATTEMPT_REAL:
+            return
+        if not self.repository_provider().assignment_for_student(attempt["exam_id"], attempt["user_id"]):
+            self._fail(403, "not_assigned", "Your access to this exam was revoked by the examiner.")
+
+    def finalize_attempt(self, attempt_id: str) -> dict | None:
+        """Single idempotent transition used by explicit submit and by server expiry."""
+        repo = self.repository_provider()
+        submitted = repo.submit_attempt(attempt_id)
+        if not submitted:
+            return None
+        paper = self._attempt_paper(submitted)
+        self._assess().finalize_scores(attempt_id, max_score=rules.snapshot_max_score(paper))
+        self._stop_active_proctor(submitted.get("session_id") or "")
+        refreshed = repo.get_attempt(attempt_id) or submitted
+        return {**refreshed, "idempotent_replay": bool(submitted.get("idempotent_replay"))}
+
+    def finalize_expired_attempts(self) -> int:
+        """Server-side expiry sweep: finalize every in-progress attempt past its deadline."""
+        count = 0
+        for row in self._assess().expired_active_attempts(self.now()):
+            try:
+                if self.finalize_attempt(row["attempt_id"]):
+                    count += 1
+            except Exception as exc:
+                self.log_failure("attempt.expiry_finalize_failed", attempt_id=row.get("attempt_id"), error=exc.__class__.__name__)
+        return count
 
     def get_attempt(self, attempt_id: str, user: dict) -> dict:
         repo = self.repository_provider()
         attempt = repo.get_attempt(attempt_id)
         if not attempt:
             self._fail(404, "not_found", "Attempt not found.")
-        if user["role"] == "student" and attempt.get("user_id") != user["user_id"]:
+        staff = user["role"] in {"instructor", "admin"}
+        is_owner = attempt.get("user_id") == user["user_id"]
+        if user["role"] == "student" and not is_owner:
             self._fail(403, "forbidden", "You can only access your own attempts.")
         if user["role"] == "instructor" and (
             attempt.get("tenant_id") or "tenant_default"
         ) != tenant_id(user):
-            self._fail(
-                403,
-                "forbidden",
-                "This attempt belongs to another institution.",
-            )
+            self._fail(403, "forbidden", "This attempt belongs to another institution.")
         if attempt.get("status") == "in_progress" and self.attempt_expired(attempt):
-            attempt = repo.submit_attempt(attempt_id) or attempt
-            self._stop_active_proctor(attempt.get("session_id") or "")
-        include_correct = user["role"] in {"instructor", "admin"}
-        questions = [
-            format_question(question, include_correct=include_correct)
-            for question in repo.list_exam_questions(
-                attempt["exam_id"], include_correct=include_correct
-            )
-        ]
+            attempt = self.finalize_attempt(attempt_id) or attempt
+        paper = self._attempt_paper(attempt)
+        # Examiners see keys for review; candidates (and examiners in their own sandbox while it
+        # is running) get the candidate-safe projection only.
+        reveal = staff and not (is_owner and attempt.get("status") == "in_progress")
+        hide_score = not staff and not self._results_visible(attempt)
+        responses = self._assess().list_responses(attempt_id)
         return format_attempt(
             attempt,
-            questions=questions,
-            responses=repo.get_attempt_responses(attempt_id),
-            include_response_grading=include_correct,
+            questions=rules.candidate_questions(paper, include_correct=reveal),
+            responses=responses,
+            include_response_grading=reveal or (not hide_score and attempt.get("status") == "submitted"),
+            hide_score=hide_score,
         )
 
     def save_response(
         self, attempt_id: str, data: dict, user: dict
     ) -> dict:
         repo = self.repository_provider()
-        attempt = repo.get_attempt(attempt_id)
-        if not attempt:
-            self._fail(404, "not_found", "Attempt not found.")
-        if attempt.get("user_id") != user["user_id"]:
-            self._fail(403, "forbidden", "You can only update your own attempt.")
+        attempt = self._load_attempt_for_owner(attempt_id, user)
         if attempt.get("status") != "in_progress":
             self._fail(409, "attempt_locked", "This attempt is no longer active.")
         if self.attempt_expired(attempt):
-            repo.submit_attempt(attempt_id)
-            self._stop_active_proctor(attempt.get("session_id") or "")
+            self.finalize_attempt(attempt_id)
             self._fail(
                 409,
                 "attempt_expired",
-                "The exam time limit was reached and the attempt was submitted automatically.",
+                "The exam deadline has passed on the server. The attempt was submitted with the answers saved before the deadline.",
             )
+        self._ensure_still_eligible(attempt)
         question_id = str(data.get("question_id") or "")
-        question = repo.get_question(question_id)
-        if not question or question.get("exam_id") != attempt.get("exam_id"):
+        question = rules.snapshot_question(self._attempt_paper(attempt), question_id)
+        if not question:
             self._fail(404, "not_found", "Question not found for this attempt.")
-        selected_option_id = str(data.get("selected_option_id") or "")
-        if selected_option_id:
-            option = repo.get_option(selected_option_id)
-            if not option or option.get("question_id") != question_id:
-                self._fail(
-                    422,
-                    "validation_error",
-                    "Selected option does not belong to this question.",
+        mutation_id = str(data.get("mutation_id") or "")[:64]
+        client_seq = data.get("client_seq")
+        client_seq = int(client_seq) if client_seq is not None else None
+        assess = self._assess()
+        existing = assess.get_response(attempt_id, question_id)
+        if existing and mutation_id and existing.get("last_mutation_id") == mutation_id:
+            return {**format_attempt_response(existing), "status": "duplicate", "saved_at": iso(existing.get("updated_at") or existing.get("answered_at"))}
+        if existing and client_seq is not None and existing.get("client_seq") is not None and client_seq <= int(existing["client_seq"]):
+            # An older change arrived after a newer one: keep the newer server state.
+            return {**format_attempt_response(existing), "status": "stale", "saved_at": iso(existing.get("updated_at") or existing.get("answered_at"))}
+        kind = str(data.get("kind") or "answer").lower()
+        flagged = data.get("flagged")
+        answer = grade = None
+        if kind != "flag":
+            try:
+                answer = rules.normalize_answer(
+                    question,
+                    selected_option_id=str(data.get("selected_option_id") or ""),
+                    selected_option_ids=data.get("selected_option_ids") or [],
+                    response_text=str(data.get("response_text") or ""),
                 )
-        response = repo.save_response(
+            except rules.AssessmentError as exc:
+                raise ExamServiceError(422, exc.error, exc.message) from exc
+            grade = rules.grade_answer(question, answer)
+        saved = assess.upsert_response(
             attempt_id=attempt_id,
             question_id=question_id,
-            selected_option_id=selected_option_id,
-            response_text=str(data.get("response_text") or ""),
             tenant_id=attempt.get("tenant_id") or tenant_id(user),
+            answer=answer,
+            grade=grade,
+            flagged=None if flagged is None else bool(flagged),
+            client_seq=client_seq,
+            mutation_id=mutation_id,
         )
-        return format_attempt_response(response, include_grading=False)
+        return {**format_attempt_response(saved), "status": "saved", "saved_at": iso(saved.get("updated_at") or saved.get("answered_at"))}
 
     def submit_attempt(
         self, attempt_id: str, generate_report: bool, user: dict
     ) -> dict:
-        repo = self.repository_provider()
-        attempt = repo.get_attempt(attempt_id)
-        if not attempt:
-            self._fail(404, "not_found", "Attempt not found.")
-        if attempt.get("user_id") != user["user_id"]:
-            self._fail(403, "forbidden", "You can only submit your own attempt.")
+        attempt = self._load_attempt_for_owner(attempt_id, user)
         if attempt.get("status") not in {"in_progress", "submitted"}:
             self._fail(
                 409,
                 "invalid_attempt_state",
                 "This attempt cannot be submitted from its current state.",
             )
-        idempotent_replay = attempt.get("status") == "submitted"
         try:
-            submitted = repo.submit_attempt(attempt_id)
-        except ValueError as exc:
+            submitted = self.finalize_attempt(attempt_id)
+        except (ValueError, RuntimeError) as exc:
             raise ExamServiceError(
                 409,
                 "invalid_attempt_state",
@@ -818,9 +952,7 @@ class ExamService:
             ) from exc
         if not submitted:
             self._fail(500, "submit_failed", "Could not submit attempt.")
-        idempotent_replay = bool(
-            submitted.get("idempotent_replay", idempotent_replay)
-        )
+        idempotent_replay = bool(submitted.get("idempotent_replay"))
         if submitted.get("session_id"):
             submitted = dict(submitted)
             submitted["risk_score"] = min(
@@ -830,7 +962,6 @@ class ExamService:
                 ),
                 100,
             )
-        self._stop_active_proctor(submitted.get("session_id") or "")
         report = None
         if generate_report and submitted.get("session_id"):
             try:
@@ -846,14 +977,37 @@ class ExamService:
                 report = self.report_metadata(submitted["session_id"], path)
             except Exception:
                 report = None
+        staff = user["role"] in {"instructor", "admin"}
         return {
             **format_attempt(
                 submitted,
-                responses=repo.get_attempt_responses(attempt_id),
+                responses=self._assess().list_responses(attempt_id),
+                hide_score=not staff and not self._results_visible(submitted),
             ),
             "report": report,
             "idempotent_replay": idempotent_replay,
         }
+
+    def start_sandbox_attempt(self, exam_id: str, user: dict) -> dict:
+        """Examiner preview: a real attempt flow tagged 'sandbox' and excluded from all results."""
+        repo = self.repository_provider()
+        exam = self.require_management_access(exam_id, user)
+        self.validate_exam_content(exam_id, int(exam.get("total_marks") or 0))
+        competing = repo.active_attempt_for_user(user["user_id"])
+        if competing:
+            if competing.get("exam_id") == exam_id and (self._assess().attempt_extras(competing["attempt_id"]).get("attempt_type") == rules.ATTEMPT_SANDBOX):
+                return self.get_attempt(competing["attempt_id"], user)
+            self.finalize_attempt(competing["attempt_id"])
+        attempt = repo.create_attempt(
+            exam_id=exam_id,
+            user_id=user["user_id"],
+            roll_number="SANDBOX",
+            assignment_id="",
+            session_id="",
+            tenant_id=exam.get("tenant_id") or tenant_id(user),
+        )
+        self._freeze_attempt(attempt["attempt_id"], exam, rules.ATTEMPT_SANDBOX)
+        return self.get_attempt(attempt["attempt_id"], user)
 
     def attendance(self, exam_id: str, user: dict) -> list[dict]:
         self.require_management_access(exam_id, user)
@@ -941,13 +1095,9 @@ class ExamService:
             ) from exc
 
     def attempt_expired(self, attempt: dict) -> bool:
-        if not attempt.get("started_at"):
-            return False
         try:
-            duration = max(1, int(attempt.get("duration_minutes") or 60))
-            return self.now() >= parse_datetime(attempt["started_at"]) + timedelta(
-                minutes=duration
-            )
+            deadline = rules.attempt_deadline(attempt)
+            return bool(deadline and self.now() >= deadline)
         except Exception:
             return False
 
