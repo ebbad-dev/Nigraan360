@@ -2,144 +2,129 @@
 
 **Secure Examination Management System** — Technoverse 5.0 Web-e-Thon submission.
 
-Nigran 360 is a full-stack exam platform built on FastAPI + SQL Server (backend) and React 19 + TanStack Router/Start (frontend). It supports three roles — Administrator, Examiner, and Candidate — and delivers verifiable academic results, a reusable question bank, live attempt monitoring, manual grading, and server-enforced deadline safety.
+Nigran 360 runs the whole examination lifecycle for three roles (Administrator, Examiner, Candidate):
+- reusable question bank;
+- scheduled exams with server-enforced deadlines;
+- a failure-resilient candidate workspace;
+- automatic and manual grading;
+- controlled result publication and disputes;
+- analytics;
+- verifiable PDF reports.
 
----
+It evolved from the ProctorAI codebase and keeps that project's browser, camera and audio integrity monitoring.
 
-## Tech Stack
+## Live deployment
+
+| | URL |
+|---|---|
+| Frontend | _add the Netlify URL here before the cutoff_ |
+| API | _add the Render URL here before the cutoff_ (`/health` returns `healthy`) |
+
+Deployment steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## Test credentials (synthetic demo data)
+
+Created by `scripts/seed_demo.py`. All people and data are fictional.
+
+| Role | Email | Password |
+|---|---|---|
+| Administrator | `admin@nigran360.demo` | `Nigran360!Admin` |
+| Examiner | `examiner@nigran360.demo` | `Nigran360!Examiner` |
+| Candidate | `candidate@nigran360.demo` | `Nigran360!Candidate` |
+| Candidate (second) | `candidate2@nigran360.demo` | `Nigran360!Candidate` |
+
+The seed also publishes the exam **`DEMO360`** (five questions covering every type) and enrols both candidates. These credentials are for demonstration only; rotate them for any real use.
+
+## Tech stack
 
 | Layer | Technology |
 |---|---|
 | Frontend | React 19, TanStack Router/Start, TanStack Query, Tailwind CSS, Recharts |
 | Backend | FastAPI, Pydantic v2, Uvicorn |
-| Database | SQL Server via `pyodbc` (SQLAlchemy-style service layer) |
-| PDF Reports | ReportLab — verifiable academic result certificates with QR token |
-| Proctoring | OpenCV camera capture, Flask MJPEG stream, sounddevice microphone |
+| Database | Microsoft SQL Server via `pyodbc`; additive, versioned migrations applied on startup (`SchemaMigrations`) |
+| Reports | ReportLab PDF with a public verification link |
+| Tests | `unittest`/pytest, live API end-to-end script, Playwright (Chrome) |
 
----
+No paid services are required.
 
-## Innovation Challenge 5.3 — Failure-Resilient Examinations
+## Innovation 5.3: failure-resilient examinations
 
-The core differentiator is **immutable attempt snapshots with server-side deadline enforcement**:
+Internet drops, device crashes and power cuts should not cost a candidate their work, and they must not buy anyone extra time.
 
-1. **Snapshot on start** — when a candidate begins, the exact question paper (with all options) is frozen into `snapshot_json` on the attempt row. If an examiner later edits the exam, in-progress candidates see the original paper they started with. No question drift mid-exam.
-
-2. **Idempotent submit** — a double-submit (network retry, tab crash) replays the existing result instead of overwriting it. The service detects the concurrent write race and returns the winning attempt to both callers.
-
-3. **Server-side expiry sweep** — a background thread runs every 60 seconds and auto-finalises any attempt whose `started_at + duration` has passed, even if the browser tab was closed or the network dropped. Candidates cannot extend time by disconnecting.
-
-4. **Verifiable PDF certificates** — results are signed with a unique token. Anyone can visit `/verify/<token>` to confirm the certificate is genuine and has not been revoked.
-
----
-
-## Roles
-
-| Role | Access |
+| Disruption | What Nigran 360 does |
 |---|---|
-| **Administrator** | Tenant management, user creation/role assignment, audit log, all instructor privileges |
-| **Examiner** | Create/edit exams, question bank, assign candidates, live monitor, grading queue, publish results, analytics |
-| **Candidate** | View assigned exams, take exams, download verified result PDFs, read announcements |
+| Connection drops mid-exam | Every change is written to a durable on-device outbox first, then synced. The UI shows each question as **Saved on server**, **Pending sync** or **Save failed**. Never "saved" until the server confirms. |
+| Retries and duplicate requests | Each change carries a unique `mutation_id` plus a per-attempt `client_seq`. The server replays duplicates and rejects older changes that arrive late, so newer answers are never overwritten. |
+| Browser crash, refresh or device switch | Confirmed answers reload from the server; unsynced ones from the device outbox. The question paper is a write-once snapshot, so it never changes mid-attempt. |
+| Server or API outage | Browser connectivity and API reachability are shown separately. A network failure no longer signs the candidate out. |
+| "Offline means more time" | The deadline is stored on the server when the attempt starts. The timer runs on server time anchored to a monotonic clock, so going offline or changing the device clock changes nothing. Changes arriving after the deadline are refused, and the attempt is finalized with what the server received in time (background sweep). |
 
----
+**Trade-off:** an answer that never reaches the server before the deadline does not count. Accepting device timestamps would let anyone claim extra time. The interface tells the candidate this in plain words.
 
-## Setup (Local Development)
+### Demonstrating 5.3 (about 2 minutes)
+1. Sign in as `candidate@nigran360.demo`. Open **My Exams** and start `DEMO360` with any roll number.
+2. Answer question 1. The badge changes to **Saved on server**.
+3. Open DevTools → Network → **Offline**. The red banner says you are offline and the timer keeps running.
+4. Answer question 2. It shows **Pending sync**, amber in the navigator.
+5. Refresh while offline (if the browser allows it) or simply go back **Online**. The banner says **Reconnected**, and question 2 turns **Saved on server**.
+6. As the examiner, open **Monitor, grade & results** → **Monitor**. The progress comes from server data.
 
-1. Install **Python 3.12** and **Node.js 24**.
-2. Create `.env` from `.env.example` — never commit `.env`.
-3. Configure SQL Server:
-   ```
-   PROCTORAI_DB_SERVER=localhost
-   PROCTORAI_DB_NAME=Nigran360
-   PROCTORAI_DB_TRUSTED=true
-   PROCTORAI_DB_DRIVER=ODBC Driver 17 for SQL Server
-   ```
-4. Set `AUTH_SECRET` to a random string of at least 32 characters.
-5. Bootstrap the first admin:
-   ```
-   PROCTORAI_BOOTSTRAP_ADMIN_EMAIL=admin@example.com
-   PROCTORAI_BOOTSTRAP_ADMIN_PASSWORD=AdminPass123!
-   ```
-6. Install dependencies and start:
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File scripts/setup_dev.ps1
-   npm run dev
-   ```
+Automated proof: `frontend/e2e/resilience.spec.ts` and the `5.3` steps in `scripts/nigran_live_e2e.py`.
 
-Services:
-- Frontend: `http://127.0.0.1:8080`
-- API: `http://127.0.0.1:5051`
-- Proctor sidecar: `http://127.0.0.1:5050`
+## Feature map
 
----
+| Area | Where |
+|---|---|
+| Admin: users, roles, institutions, audit log | `/admin` |
+| Examiner dashboard: exams, question builder (3 types), schedule, randomization, enrolment, bulk import, sandbox preview | `/instructor` |
+| Question bank with categories, difficulty, CSV/JSON import | `/bank` |
+| Results, grading queue, disputes, analytics, live monitor, announcements | `/exam-results/<examId>` |
+| Candidate dashboard, results, PDF download, disputes, announcements | `/candidate` |
+| Exam workspace (navigator, mark-for-review, scratchpad, display preferences) | `/exam?attempt_id=…` |
+| Public report verification | `/verify/<token>` |
 
-## Demo Data (Quick Start)
+Full traceability with test evidence: [docs/nigran360/IMPLEMENTATION_STATUS.md](docs/nigran360/IMPLEMENTATION_STATUS.md).
 
-After the first run the bootstrap admin is created automatically. Use these credentials to explore every role:
+## Local setup
 
-| Role | Email | Password |
-|---|---|---|
-| Administrator | `admin@nigran360.test` | set via `PROCTORAI_BOOTSTRAP_ADMIN_EMAIL/PASSWORD` |
-| Examiner | create from `/admin` → Users → New User, role = instructor | any password |
-| Candidate | register from the sign-up page (auto-assigned student role) | any password |
+Requirements: Python 3.12, Node.js 24, SQL Server (Express is fine) with ODBC Driver 17 or 18.
 
-**Suggested walkthrough:**
-1. Sign in as Examiner → create an exam, add questions from the Question Bank.
-2. Assign the Candidate user to the exam.
-3. Sign in as Candidate → take the exam (the timer enforces the deadline server-side).
-4. Back as Examiner → grade any written answers → publish results.
-5. Candidate downloads their PDF certificate; paste the token at `/verify/<token>` to confirm it.
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/setup_dev.ps1   # .venv + npm ci
+Copy-Item .env.example .env                                       # then edit; never commit .env
+```
 
----
+Minimum `.env` values:
+
+```
+PROCTORAI_DB_SERVER=localhost
+PROCTORAI_DB_NAME=Nigran360
+PROCTORAI_DB_TRUSTED=true
+PROCTORAI_DB_DRIVER=ODBC Driver 17 for SQL Server
+AUTH_SECRET=<random string, at least 32 characters>
+```
+
+Then:
+
+```powershell
+.venv\Scripts\python scripts\seed_demo.py   # demo accounts + DEMO360 exam (tables are created automatically)
+npm run dev                                 # API :5051, frontend :8080, local proctor engine :5050
+```
+
+The `PROCTORAI_*` variable names are kept from the original codebase for deployment compatibility.
 
 ## Tests
 
 ```powershell
-# Backend (71 tests)
-powershell -ExecutionPolicy Bypass -File scripts/setup_dev.ps1
-.venv\Scripts\pytest tests\ -v
-
-# Frontend type-check
-cd frontend
-npm run typecheck
-
-# Frontend production build
-npm run build
+.venv\Scripts\python -m pytest tests -q               # 85 unit/service tests
+.venv\Scripts\python scripts\nigran_live_e2e.py       # 73 live checks against SQL Server
+cd frontend; npm run typecheck; npm run build
+npx playwright test                                   # 8 browser tests (needs API + frontend running)
 ```
 
----
+Playwright uses the installed Chrome. Point it at a running stack with `E2E_BASE_URL` and `E2E_API_URL`; the defaults are `http://127.0.0.1:8090` and `http://127.0.0.1:5071`.
 
-## Deployment
-
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the free-tier topology:
-- **Database**: MonsterASP free MSSQL
-- **API**: Render free web service (Docker, `render.yaml`)
-- **Frontend**: Netlify / Vercel (static, `netlify.toml`)
-
----
-
-## Project Structure
-
-```
-.
-├── frontend/               # React 19 + TanStack Start SPA
-│   └── src/
-│       ├── routes/         # File-based routes (candidate, bank, exam-results, verify…)
-│       ├── lib/            # api.ts, queries.ts, types.ts
-│       └── components/     # AppShell, GlassCard, GlowButton…
-├── services/               # Business logic (ExamService, AssessmentService)
-├── infrastructure/api/     # FastAPI app + routers
-│   └── routers/            # auth, exam, attempt, session, assessment…
-├── reporting/              # academic_pdf.py — ReportLab PDF builder
-├── tests/                  # pytest suite (71 tests)
-├── docs/                   # DEPLOYMENT.md, DATA_RETENTION.md
-└── scripts/                # setup_dev.ps1, run_quality_checks.ps1…
-```
-
----
-
-## Security Notes
-
-- Always set `AUTH_SECRET`, SMTP credentials, and restrict `CORS_ORIGINS` before deploying.
-- Use HTTPS in production.
-- Rotate all bootstrap credentials after first deploy.
-- Review automated risk scores before academic decisions; they are advisory, not conclusive.
+## Limitations
+- The camera, microphone and phone-detection engine needs a local machine. In the cloud deployment, browser-side monitoring (tab switches, clipboard, fullscreen) still works.
+- Monitoring signals are indicators for human review, never proof of misconduct.
+- Free Render instances sleep after about 15 idle minutes, so open `/health` before a demo.
