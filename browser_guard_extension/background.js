@@ -38,7 +38,7 @@ async function postJson(path, payload) {
       lastError = error;
     }
   }
-  console.warn("ProctorAI Browser Guard request failed after 3 attempts", lastError);
+  console.warn("Nigran 360 Browser Guard request failed after 3 attempts", lastError);
 }
 
 function ping() {
@@ -46,7 +46,7 @@ function ping() {
   fetch(`${API_BASE}/browser-guard/ping?source=extension&version=${encodeURIComponent(VERSION)}`, {
     headers: { "X-Proctor-Session-Token": sessionToken },
   })
-    .catch((error) => console.warn("ProctorAI Browser Guard ping failed", error));
+    .catch((error) => console.warn("Nigran 360 Browser Guard ping failed", error));
 }
 
 function classifyUrl(url = "") {

@@ -8,7 +8,7 @@ function send(path, payload) {
 
 window.addEventListener("message", (event) => {
   if (event.source !== window || event.origin !== location.origin || !event.data) return;
-  if (event.data.type === "PROCTORAI_BROWSER_GUARD_TOKEN") {
+  if (["NIGRAN360_BROWSER_GUARD_TOKEN", "PROCTORAI_BROWSER_GUARD_TOKEN"].includes(event.data.type)) {
     chrome.runtime.sendMessage({
       source: "proctorai_content",
       type: "set_session_token",
@@ -16,7 +16,7 @@ window.addEventListener("message", (event) => {
       session_id: event.data.session_id,
     });
   }
-  if (event.data.type === "PROCTORAI_BROWSER_GUARD_CLEAR") {
+  if (["NIGRAN360_BROWSER_GUARD_CLEAR", "PROCTORAI_BROWSER_GUARD_CLEAR"].includes(event.data.type)) {
     chrome.runtime.sendMessage({
       source: "proctorai_content",
       type: "clear_session_token",

@@ -677,13 +677,8 @@ class ExamService:
                         "session_exam_conflict",
                         "The requested session belongs to another exam.",
                     )
-            active_proctor_session = self.get_active_session_id()
-            if active_proctor_session and active_proctor_session != session_id:
-                self._fail(
-                    409,
-                    "proctor_busy",
-                    "Stop the active proctor session before starting another attempt.",
-                )
+            # The local camera engine monitors one session at a time and /proctor/start
+            # refuses a second one; that must not stop other candidates from sitting the exam.
             try:
                 attempt = repo.create_attempt(
                     exam_id=exam_id,

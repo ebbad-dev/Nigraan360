@@ -95,7 +95,7 @@ BROWSER_GUARD_REQUIRED = os.getenv("BROWSER_GUARD_REQUIRED", "true").lower() in 
 }
 
 DB_SERVER = os.getenv("PROCTORAI_DB_SERVER", "localhost")
-DB_NAME = os.getenv("PROCTORAI_DB_NAME", "Nigran 360_Lite")
+DB_NAME = os.getenv("PROCTORAI_DB_NAME", "Nigran360")
 DB_TRUSTED = os.getenv("PROCTORAI_DB_TRUSTED", "true").lower() in {
     "1",
     "true",

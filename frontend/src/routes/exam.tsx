@@ -222,12 +222,12 @@ function Workspace({ attempt }: { attempt: ExamAttempt }) {
       .startProctor({ session_id: sessionId, student_id: attempt.user_id, exam_code: attempt.exam.exam_code || attempt.exam_id })
       .then(() => api.issueBrowserGuardToken(sessionId))
       .then(({ token, session_id }) => {
-        if (!cancelled) window.postMessage({ type: "Nigran 360_BROWSER_GUARD_TOKEN", token, session_id }, window.location.origin);
+        if (!cancelled) window.postMessage({ type: "NIGRAN360_BROWSER_GUARD_TOKEN", token, session_id }, window.location.origin);
       })
       .catch(() => setProctorNotice("Camera monitoring is unavailable on this device; browser activity is still recorded."));
     return () => {
       cancelled = true;
-      window.postMessage({ type: "Nigran 360_BROWSER_GUARD_CLEAR" }, window.location.origin);
+      window.postMessage({ type: "NIGRAN360_BROWSER_GUARD_CLEAR" }, window.location.origin);
     };
   }, [sessionId, sandbox, submittedOnServer, attempt.user_id, attempt.exam.exam_code, attempt.exam_id]);
 
