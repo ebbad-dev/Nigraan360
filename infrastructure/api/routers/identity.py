@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
+from core.login_throttle import LoginThrottle
 from services.identity_service import IdentityService, IdentityServiceError, OAuthFlowError
 
 
@@ -52,8 +53,10 @@ def create_identity_router(
     current_user: Callable,
     audit: Callable[..., None],
     api_error: Callable[..., None],
+    login_throttle: LoginThrottle | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/auth", tags=["identity"])
+    throttle = login_throttle or LoginThrottle()
 
     def handle_error(exc: IdentityServiceError) -> None:
         api_error(exc.status_code, exc.error, exc.message, exc.details)
@@ -76,10 +79,24 @@ def create_identity_router(
 
     @router.post("/login", response_model=AuthResponse)
     def login(req: LoginRequest, request: Request):
+        email = (req.email or "").strip().lower()
+        ip = request.client.host if request.client else "unknown"
+        wait = throttle.retry_after(email, ip)
+        if wait:
+            audit("auth.login_throttled", actor=None, resource_type="user", resource_id=email, request=request)
+            api_error(
+                429,
+                "too_many_attempts",
+                f"Too many failed sign-in attempts. Try again in {wait} seconds.",
+                {"retry_after_seconds": wait},
+            )
         try:
             session = service.login(req.email, req.password)
         except IdentityServiceError as exc:
+            if exc.status_code == 401:
+                throttle.record_failure(email, ip)
             handle_error(exc)
+        throttle.record_success(email, ip)
         user = session["user"]
         audit(
             "auth.login",

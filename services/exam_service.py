@@ -939,16 +939,26 @@ class ExamService:
             except rules.AssessmentError as exc:
                 raise ExamServiceError(422, exc.error, exc.message) from exc
             grade = rules.grade_answer(question, answer)
-        saved = assess.upsert_response(
-            attempt_id=attempt_id,
-            question_id=question_id,
-            tenant_id=attempt.get("tenant_id") or tenant_id(user),
-            answer=answer,
-            grade=grade,
-            flagged=None if flagged is None else bool(flagged),
-            client_seq=client_seq,
-            mutation_id=mutation_id,
-        )
+        from database.assessment_repository import AttemptClosedError
+
+        try:
+            saved = assess.upsert_response(
+                attempt_id=attempt_id,
+                question_id=question_id,
+                tenant_id=attempt.get("tenant_id") or tenant_id(user),
+                answer=answer,
+                grade=grade,
+                flagged=None if flagged is None else bool(flagged),
+                client_seq=client_seq,
+                mutation_id=mutation_id,
+            )
+        except AttemptClosedError:
+            self.finalize_expired_attempts()
+            self._fail(
+                409,
+                "attempt_expired",
+                "The attempt closed on the server before this answer arrived; it was not recorded.",
+            )
         return {**format_attempt_response(saved), "status": "saved", "saved_at": iso(saved.get("updated_at") or saved.get("answered_at"))}
 
     def submit_attempt(

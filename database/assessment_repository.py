@@ -16,6 +16,17 @@ from typing import Any
 from core.security import new_id
 
 DEFAULT_TENANT_ID = "tenant_default"
+
+# Every answer write re-checks, inside the same statement, that the attempt is still open and
+# before its server deadline, so nothing can land after submission or expiry.
+_ATTEMPT_OPEN = (
+    "EXISTS (SELECT 1 FROM ExamAttempts x WHERE x.attempt_id = ? AND x.status = 'in_progress' "
+    "AND (x.deadline_at IS NULL OR x.deadline_at > ?))"
+)
+
+
+class AttemptClosedError(Exception):
+    """The attempt was submitted or passed its deadline before this write could be applied."""
 REAL = "COALESCE(a.attempt_type, 'real') = 'real'"
 
 
@@ -284,18 +295,23 @@ class AssessmentRepository:
             if flagged is not None:
                 sets.append("flagged = ?")
                 params.append(1 if flagged else 0)
-            params.append(existing["response_id"])
-            self.db.execute(f"UPDATE StudentResponses SET {', '.join(sets)} WHERE response_id = ?", tuple(params))
+            params += [existing["response_id"], attempt_id, now]
+            changed = self.db.execute(
+                f"UPDATE StudentResponses SET {', '.join(sets)} WHERE response_id = ? AND {_ATTEMPT_OPEN}",
+                tuple(params),
+            )
+            if not changed:
+                raise AttemptClosedError(attempt_id)
         else:
             answer = answer or {"selected_option_id": "", "selected_option_ids": [], "response_text": ""}
             grade = grade or {"is_correct": None, "awarded_marks": 0, "grading_status": "auto_graded"}
             try:
-                self.db.execute(
-                    """
+                inserted = self.db.execute(
+                    f"""
                     INSERT INTO StudentResponses (
                         response_id, tenant_id, attempt_id, question_id, selected_option_id, selected_option_ids_json,
                         response_text, is_correct, awarded_marks, grading_status, flagged, client_seq, last_mutation_id, answered_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE {_ATTEMPT_OPEN}
                     """,
                     (
                         new_id("rsp"), tenant_id, attempt_id, question_id,
@@ -309,8 +325,14 @@ class AssessmentRepository:
                         client_seq,
                         mutation_id or None,
                         now,
+                        attempt_id,
+                        now,
                     ),
                 )
+                if not inserted:
+                    raise AttemptClosedError(attempt_id)
+            except AttemptClosedError:
+                raise
             except Exception:
                 # A concurrent first save won the unique (attempt, question) index; apply as an update.
                 if not self.get_response(attempt_id, question_id):

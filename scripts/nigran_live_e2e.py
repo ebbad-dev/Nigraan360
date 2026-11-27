@@ -70,6 +70,9 @@ def main() -> int:
 
     with TestClient(fastapi_app.app) as c:
         try:
+            ghost = f"e2e-ghost-{tag}@nigran360.test"
+            codes = [c.post("/auth/login", json={"email": ghost, "password": "wrong-password"}).status_code for _ in range(6)]
+            step("3.1 sixth failed sign-in within 5 minutes is throttled (429)", codes[:5] == [401] * 5 and codes[5] == 429, str(codes))
             admin = body(c.post("/auth/login", json={"email": admin_email, "password": pw}))
             step("3.1 admin signs in", "access_token" in admin)
             at = admin["access_token"]
@@ -190,6 +193,16 @@ def main() -> int:
             step("3.5 repeated submit is idempotent", r2.status_code == 200 and body(r2).get("submitted_at") == body(r).get("submitted_at"), r2.text[:200])
             r = save(ca, {"question_id": mcq["question_id"], "selected_option_id": wrong_mcq, "mutation_id": str(uuid.uuid4()), "client_seq": 9})
             step("3.5 answers locked after submission", r.status_code == 409)
+            from database.assessment_repository import AssessmentRepository, AttemptClosedError
+            try:
+                AssessmentRepository(db).upsert_response(attempt_id=attempt_id, question_id=mcq["question_id"], tenant_id=tenant,
+                                                         answer={"selected_option_id": wrong_mcq, "selected_option_ids": [wrong_mcq], "response_text": ""},
+                                                         grade={"is_correct": False, "awarded_marks": 0, "grading_status": "auto_graded"},
+                                                         flagged=None, client_seq=99, mutation_id=str(uuid.uuid4()))
+                guarded = False
+            except AttemptClosedError:
+                guarded = True
+            step("R1 database refuses an answer write that races past submission", guarded)
             step("3.8 score hidden before publication", body(c.get(f"/attempts/{attempt_id}", headers=h(ca))).get("score") is None)
 
             results = body(c.get(f"/exams/{exam_id}/results", headers=h(ex)))
