@@ -336,10 +336,15 @@ if _FASTAPI_AVAILABLE:
         """Return a reusable DB connection for polling-heavy API endpoints."""
         global _db_connection, _db_retry_after, _bootstrap_checked
         try:
-            from database.db_connection import DatabaseConnection
+            import os as _os
+            _database_url = _os.getenv("DATABASE_URL", "")
+            if _database_url:
+                from database.pg_compat import PostgreSQLConnection as _DBCls
+            else:
+                from database.db_connection import DatabaseConnection as _DBCls
             now = time.monotonic()
             if _db_connection is None:
-                _db_connection = DatabaseConnection()
+                _db_connection = _DBCls(_database_url) if _database_url else _DBCls()
             if not _db_connection.is_active:
                 if now < _db_retry_after:
                     return None

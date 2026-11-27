@@ -21,7 +21,8 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY requirements.lock.txt ./
-RUN pip install --require-hashes -r requirements.lock.txt
+RUN pip install --require-hashes -r requirements.lock.txt \
+    && pip install psycopg2-binary==2.9.10
 
 COPY . .
 RUN mkdir -p logs runtime screenshots reports exports

@@ -20,6 +20,12 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
+const DEMO_ROLES = [
+  { label: "Administrator", email: "admin@nigran360.demo", password: "Nigran360!Admin", color: "text-blue-400" },
+  { label: "Examiner", email: "examiner@nigran360.demo", password: "Nigran360!Examiner", color: "text-teal-400" },
+  { label: "Candidate", email: "candidate@nigran360.demo", password: "Nigran360!Candidate", color: "text-amber-400" },
+] as const;
+
 function LoginPage() {
   const navigate = useNavigate();
   const oauthError =
@@ -50,8 +56,30 @@ function LoginPage() {
     }
   };
 
+  const fillRole = (roleEmail: string, rolePassword: string) => {
+    setEmail(roleEmail);
+    setPassword(rolePassword);
+    setError("");
+  };
+
   return (
     <AuthShell eyebrow="Secure examination management" title="Sign in">
+      <div className="mb-5">
+        <p className="mb-2 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Sign in as</p>
+        <div className="grid grid-cols-3 gap-2">
+          {DEMO_ROLES.map((r) => (
+            <button
+              key={r.label}
+              type="button"
+              onClick={() => fillRole(r.email, r.password)}
+              className="rounded-lg border border-input bg-secondary px-2 py-2 text-center text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+            >
+              <span className={`block text-sm font-semibold ${r.color}`}>{r.label}</span>
+              <span className="block mt-0.5 text-muted-foreground">demo account</span>
+            </button>
+          ))}
+        </div>
+      </div>
       <form className="space-y-4" onSubmit={onSubmit}>
         <Field label="Email address" type="email" value={email} onChange={setEmail} autoComplete="email" />
         <label className="block text-sm">
