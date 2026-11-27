@@ -506,8 +506,23 @@ if _FASTAPI_AVAILABLE:
             _require_session_access(session_id, user)
         if not session_id:
             _api_error(409, "no_active_session", "No active proctoring session is available for this signal.")
-        if not active_session_id or session_id != active_session_id:
-            _api_error(409, "session_not_active", "Browser signals are accepted only for the active session.")
+        if principal.get("kind") == "device":
+            # The local camera engine monitors exactly one session at a time.
+            if not active_session_id or session_id != active_session_id:
+                _api_error(409, "session_not_active", "Browser signals are accepted only for the active session.")
+            return session_id
+        # Each candidate's own exam client reports for its own session while that session is open,
+        # independently of which session the single local camera engine is bound to.
+        db = _get_db()
+        if db and db.is_active:
+            rows = db.query("SELECT status FROM Sessions WHERE session_id = ?", (session_id,))
+            status = rows[0].get("status") if rows else None
+        else:
+            status = (_session_store.get(session_id) or {}).get("status")
+        from core.session_lifecycle import is_active_session
+
+        if not is_active_session(status):
+            _api_error(409, "session_not_active", "Browser signals are accepted only while the exam session is open.")
         return session_id
 
     # â”€â”€ Health â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

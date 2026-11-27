@@ -878,6 +878,8 @@ class ExamService:
             attempt.get("tenant_id") or "tenant_default"
         ) != tenant_id(user):
             self._fail(403, "forbidden", "This attempt belongs to another institution.")
+        if user["role"] == "instructor" and not is_owner:
+            self.require_management_access(attempt["exam_id"], user)
         if attempt.get("status") == "in_progress" and self.attempt_expired(attempt):
             attempt = self.finalize_attempt(attempt_id) or attempt
         paper = self._attempt_paper(attempt)
@@ -1093,6 +1095,8 @@ class ExamService:
             row.get("tenant_id") or "tenant_default"
         ) != tenant_id(user):
             self._fail(403, "forbidden", "This exam belongs to another institution.")
+        if user.get("role") == "instructor" and row.get("created_by") and row.get("created_by") != user.get("user_id"):
+            self._fail(403, "forbidden", "Only the examiner who owns this exam (or an administrator) can manage it.")
         return row
 
     def require_exam_window(self, exam: dict) -> None:

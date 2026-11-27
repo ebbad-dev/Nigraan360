@@ -198,3 +198,34 @@ test("candidate disputes a published result and the examiner's decision corrects
   await expect(page.getByText(/score 6 → 8/)).toBeVisible();
   expect(attemptId).toBeTruthy();
 });
+
+test("announcement reaches a candidate inside the exam; examiner reviews the answer sheet", async ({ page, request, browser }) => {
+  const { exam, attemptId } = await submittedExam(request);
+  const ex = await apiLogin(request, EXAMINER.email, EXAMINER.password);
+  const h = { Authorization: `Bearer ${ex.access_token}` };
+
+  // A second enrolled candidate is mid-exam when the examiner posts an announcement.
+  const tag = Math.random().toString(36).slice(2, 8);
+  const admin = await apiLogin(request, ADMIN.email, ADMIN.password);
+  const email = `e2e-live-${tag}@nigran360.test`;
+  const password = `Live!${tag}Pass2026`;
+  await request.post(`${API}/admin/users`, { headers: { Authorization: `Bearer ${admin.access_token}` }, data: { email, full_name: `Live Candidate ${tag}`, role: "student", password } });
+  await request.post(`${API}/exams/${exam.id}/assignments`, { headers: h, data: { student_email: email } });
+  const cand = await apiLogin(request, email, password);
+  const attempt = await (await request.post(`${API}/attempts/start`, { headers: { Authorization: `Bearer ${cand.access_token}` }, data: { exam_id: exam.id, roll_number: "LIVE-1" } })).json();
+  await uiLogin(page, email, password, /\/candidate/);
+  await page.goto(`/exam?attempt_id=${attempt.attempt_id}`);
+  await expect(page.getByTestId("exam-timer")).toBeVisible();
+  await request.post(`${API}/exams/${exam.id}/announcements`, { headers: h, data: { title: "Question 2 clarified", body: "Even numbers include 2.", priority: "important" } });
+  await expect(page.getByTestId("exam-announcement")).toContainText("Question 2 clarified", { timeout: 30_000 });
+
+  const examinerContext = await browser.newContext();
+  const epage = await examinerContext.newPage();
+  await uiLogin(epage, EXAMINER.email, EXAMINER.password, /\/instructor/);
+  await epage.goto(`/exam-results/${exam.id}`);
+  await epage.getByRole("button", { name: "View answers" }).first().click();
+  await expect(epage.getByTestId("answer-sheet")).toContainText("chosen · correct");
+  await expect(epage.getByTestId("answer-sheet")).toContainText("Caching keeps recent results");
+  await examinerContext.close();
+  expect(attemptId).toBeTruthy();
+});

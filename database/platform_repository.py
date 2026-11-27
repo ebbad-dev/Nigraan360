@@ -260,12 +260,13 @@ class PlatformRepository:
             FROM Exams e
             LEFT JOIN ExamAssignments a ON a.exam_id = e.exam_id
             WHERE COALESCE(e.tenant_id, ?) = ?
+              AND (? = 'admin' OR e.created_by IS NULL OR e.created_by = ?)
             GROUP BY e.exam_id, e.tenant_id, e.exam_code, e.title, e.description,
                      e.semester, e.subject, e.department, e.total_marks, e.duration_minutes,
                      e.start_time, e.end_time, e.status, e.rules_json, e.created_at
             ORDER BY e.created_at DESC
             """,
-            (tenant_id, tenant_id),
+            (tenant_id, tenant_id, user["role"], user["user_id"]),
         )
 
     def get_exam(self, exam_id: str) -> dict | None:
@@ -273,14 +274,14 @@ class PlatformRepository:
             """
             SELECT e.exam_id, e.tenant_id, e.exam_code, e.title, e.description,
                    e.semester, e.subject, e.department, e.total_marks,
-                   e.duration_minutes, e.start_time, e.end_time, e.status, e.rules_json,
+                   e.duration_minutes, e.start_time, e.end_time, e.status, e.rules_json, e.created_by,
                    COUNT(CASE WHEN a.status <> 'revoked' THEN 1 END) AS assignment_count
             FROM Exams e
             LEFT JOIN ExamAssignments a ON a.exam_id = e.exam_id
             WHERE e.exam_id = ?
             GROUP BY e.exam_id, e.tenant_id, e.exam_code, e.title, e.description,
                      e.semester, e.subject, e.department, e.total_marks, e.duration_minutes,
-                     e.start_time, e.end_time, e.status, e.rules_json
+                     e.start_time, e.end_time, e.status, e.rules_json, e.created_by
             """,
             (exam_id,),
         )

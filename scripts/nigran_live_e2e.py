@@ -76,7 +76,7 @@ def main() -> int:
             tenant = admin["user"].get("tenant_id") or "tenant_default"
 
             users = {}
-            for key, role, name in [("examiner", "instructor", "E2E Examiner"), ("cand", "student", "E2E Candidate A"), ("other", "student", "E2E Candidate B")]:
+            for key, role, name in [("examiner", "instructor", "E2E Examiner"), ("examiner2", "instructor", "E2E Examiner B"), ("cand", "student", "E2E Candidate A"), ("other", "student", "E2E Candidate B")]:
                 email = f"e2e-{key}-{tag}@nigran360.test"
                 r = c.post("/admin/users", headers=h(at), json={"email": email, "full_name": name, "role": role, "tenant_id": tenant, "password": pw})
                 step(f"3.1 admin creates {role} account", r.status_code == 200, r.text[:200])
@@ -126,6 +126,10 @@ def main() -> int:
 
             r = c.post(f"/exams/{exam_id}/publish", headers=h(ex))
             step("3.2 examiner publishes exam", r.status_code == 200 and body(r).get("status") == "published", r.text[:200])
+            ex2 = users["examiner2"]["token"]
+            step("3.1 another examiner cannot see this exam", not any(e["id"] == exam_id for e in body(c.get("/exams", headers=h(ex2)))))
+            step("3.1 another examiner cannot edit it", c.put(f"/exams/{exam_id}", headers=h(ex2), json=exam_payload).status_code == 403)
+            step("3.1 another examiner cannot read its results", c.get(f"/exams/{exam_id}/results", headers=h(ex2)).status_code == 403)
             step("3.2 published -> archived transition refused", c.put(f"/exams/{exam_id}", headers=h(ex), json={**exam_payload, "status": "archived"}).status_code == 409)
 
             step("3.4 unenrolled candidate cannot start", c.post("/attempts/start", headers=h(ca), json={"exam_id": exam_id, "roll_number": "E2E-001"}).status_code in (403, 404))
@@ -170,6 +174,11 @@ def main() -> int:
             step("3.5 written answer saved", body(r).get("status") == "saved")
             step("3.1 other candidate cannot write to this attempt", save(ot, {"question_id": mcq["question_id"], "selected_option_id": wrong_mcq}).status_code in (403, 404))
 
+            sig = c.post("/tab-event", headers=h(ca), json={"session_id": attempt["session_id"], "direction": "away", "ingest_id": str(uuid.uuid4())})
+            step("3.6 candidate browser incident recorded for their own open session", sig.status_code == 200, sig.text[:200])
+            step("3.6 candidate cannot report incidents into another candidate's session", c.post("/tab-event", headers=h(ot), json={"session_id": attempt["session_id"], "direction": "away", "ingest_id": str(uuid.uuid4())}).status_code in (403, 404))
+            live_mon = body(c.get(f"/exams/{exam_id}/monitor", headers=h(ex)))
+            step("3.6 monitor shows the recorded incident", live_mon["attempts"][0]["incidents"] >= 1, str(live_mon["attempts"])[:200])
             reloaded = body(c.get(f"/attempts/{attempt_id}", headers=h(ca)))
             rows = {row["question_id"]: row for row in reloaded["responses"]}
             step("3.5 refresh restores server-confirmed answers", rows[mcq["question_id"]]["selected_option_id"] == right_mcq and len(rows) == 3)
@@ -222,6 +231,9 @@ def main() -> int:
             step("3.8 other candidate cannot read the attempt", c.get(f"/attempts/{attempt_id}", headers=h(ot)).status_code in (403, 404))
             step("3.8 other candidate cannot download the report", c.get(f"/attempts/{attempt_id}/report", headers=h(ot)).status_code in (403, 404))
 
+            sheet = body(c.get(f"/attempts/{attempt_id}", headers=h(ex)))
+            step("3.8 examiner reviews the completed answer sheet with the key", len(sheet.get("responses", [])) == 3 and any(o.get("is_correct") for q in sheet["questions"] for o in q.get("options", [])))
+            step("3.8 another examiner cannot open the answer sheet", c.get(f"/attempts/{attempt_id}", headers=h(ex2)).status_code == 403)
             analytics = body(c.get(f"/exams/{exam_id}/analytics", headers=h(ex)))
             step("4.5 question analytics from real attempts", analytics.get("sample_size") == 1 and len(analytics.get("questions", [])) == 3)
 
@@ -254,6 +266,8 @@ def main() -> int:
             r = c.post(f"/exams/{exam_id}/announcements", headers=h(ex), json={"title": "Room change", "body": "Candidates please note the update.", "priority": "important"})
             step("3.6 examiner posts announcement", r.status_code == 200, r.text[:200])
             step("3.6 enrolled candidate receives announcement", any(a["title"] == "Room change" for a in body(c.get("/student/announcements", headers=h(ca)))))
+            step("3.6 enrolled candidate reads exam announcements inside the exam", any(a["title"] == "Room change" for a in body(c.get(f"/exams/{exam_id}/announcements", headers=h(ca)))))
+            step("3.6 non-enrolled candidate cannot read exam announcements", c.get(f"/exams/{exam_id}/announcements", headers=h(ot)).status_code == 403)
             step("3.6 non-enrolled candidate does not", not any(a["title"] == "Room change" for a in body(c.get("/student/announcements", headers=h(ot)))))
             monitor = body(c.get(f"/exams/{exam_id}/monitor", headers=h(ex)))
             step("3.6 live monitor shows real attempt progress", monitor["summary"]["submitted"] == 1 and monitor["attempts"][0]["answered"] == 3)

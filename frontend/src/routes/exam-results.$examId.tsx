@@ -17,6 +17,8 @@ import {
 } from "@/lib/queries";
 import { api } from "@/lib/api";
 import { ExamDisputes } from "@/components/disputes/Disputes";
+import { AnswerSheet } from "@/components/common/AnswerSheet";
+import { Fragment } from "react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Activity, AlertCircle, ArrowLeft, CheckCircle2, Download, Megaphone, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -90,6 +92,7 @@ function ResultsTab({ examId }: { examId: string }) {
   const publish = usePublishExamResults(examId);
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState<string | null>(null);
   if (results.isLoading) return <LoadingSkeleton />;
   if (results.isError) return <p role="alert" className="text-sm text-destructive">{(results.error as Error).message}</p>;
   const data = results.data;
@@ -182,7 +185,8 @@ function ResultsTab({ examId }: { examId: string }) {
               <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No submitted attempts yet.</td></tr>
             )}
             {data.candidates.map((c: any) => (
-              <tr key={c.attempt_id} className="border-b border-border/50">
+              <Fragment key={c.attempt_id}>
+              <tr className="border-b border-border/50">
                 <td className="p-3 text-foreground">{c.student_name}<div className="text-xs text-muted-foreground">{c.student_email}</div></td>
                 <td className="p-3 font-mono text-xs">{c.roll_number}</td>
                 <td className="p-3 text-xs">{fmt(c.submitted_at)}</td>
@@ -194,8 +198,17 @@ function ResultsTab({ examId }: { examId: string }) {
                       <Download className="h-3 w-3" aria-hidden /> {downloading === c.attempt_id ? "…" : "PDF"}
                     </button>
                   )}
+                  <button className="ml-3 text-xs text-primary underline" onClick={() => setReviewing(reviewing === c.attempt_id ? null : c.attempt_id)}>
+                    {reviewing === c.attempt_id ? "Hide answers" : "View answers"}
+                  </button>
                 </td>
               </tr>
+              {reviewing === c.attempt_id && (
+                <tr className="border-b border-border/50">
+                  <td colSpan={6} className="p-3"><AnswerSheet attemptId={c.attempt_id} /></td>
+                </tr>
+              )}
+              </Fragment>
             ))}
           </tbody>
         </table>

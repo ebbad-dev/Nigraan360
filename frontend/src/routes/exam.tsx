@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { LoadingSkeleton } from "@/components/common/States";
 import { ConnectionBanner } from "@/components/common/ConnectionStatus";
 import { WorkspacePreferences } from "@/components/common/WorkspacePreferences";
+import { ExamAnnouncements } from "@/components/common/ExamAnnouncements";
 import { Scratchpad } from "@/components/scratchpad/Scratchpad";
 import { getAuthSession } from "@/lib/auth";
 import { useWorkspacePrefs } from "@/lib/preferences";
@@ -311,6 +312,7 @@ function Workspace({ attempt }: { attempt: ExamAttempt }) {
           {outbox.state.closedMessage}
         </div>
       )}
+      <ExamAnnouncements examId={attempt.exam_id} />
       <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
         <Scratchpad userId={userId} scope={`attempt:${attemptId}`} />
         <WorkspacePreferences prefs={workspace.prefs} update={workspace.update} saved={workspace.saved} />
