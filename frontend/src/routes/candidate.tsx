@@ -7,6 +7,7 @@ import { LoadingSkeleton } from "@/components/common/States";
 import { useCandidateDashboard, useStartAttempt } from "@/lib/queries";
 import { api } from "@/lib/api";
 import { DisputeForm, MyDisputes } from "@/components/disputes/Disputes";
+import { AnswerSheet } from "@/components/common/AnswerSheet";
 import { cn } from "@/lib/utils";
 import { Award, BookOpen, Calendar, ChevronRight, Clock, Download, Megaphone, PlayCircle } from "lucide-react";
 
@@ -45,6 +46,7 @@ function CandidatePage() {
   const [downloadError, setDownloadError] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [disputing, setDisputing] = useState<string | null>(null);
+  const [breakdown, setBreakdown] = useState<string | null>(null);
 
   const groups: Record<Group, any[]> = dashboard.data?.groups ?? { available: [], in_progress: [], upcoming: [], completed: [], closed: [] };
   const results: any[] = dashboard.data?.results ?? [];
@@ -224,9 +226,17 @@ function CandidatePage() {
                     <GlowButton size="sm" variant="outline" onClick={() => downloadReport(r.attempt_id)} disabled={downloadingId === r.attempt_id}>
                       <Download aria-hidden /> {downloadingId === r.attempt_id ? "Preparing…" : "Verified PDF report"}
                     </GlowButton>
+                    <GlowButton size="sm" variant="ghost" onClick={() => setBreakdown(breakdown === r.attempt_id ? null : r.attempt_id)} aria-expanded={breakdown === r.attempt_id}>
+                      {breakdown === r.attempt_id ? "Hide breakdown" : "Question breakdown"}
+                    </GlowButton>
                     <GlowButton size="sm" variant="ghost" onClick={() => setDisputing(disputing === r.attempt_id ? null : r.attempt_id)}>
                       Dispute result
                     </GlowButton>
+                  </div>
+                )}
+                {breakdown === r.attempt_id && (
+                  <div className="mt-3 w-full border-t border-border pt-3">
+                    <AnswerSheet attemptId={r.attempt_id} />
                   </div>
                 )}
                 {disputing === r.attempt_id && <DisputeForm attemptId={r.attempt_id} onClose={() => setDisputing(null)} />}

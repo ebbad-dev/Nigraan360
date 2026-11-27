@@ -176,6 +176,10 @@ test("candidate disputes a published result and the examiner's decision corrects
   await uiLogin(page, email, password, /\/candidate/);
   await page.getByRole("tab", { name: "My Results" }).click();
   await expect(page.getByText("6 / 8")).toBeVisible();
+  await page.getByRole("button", { name: "Question breakdown" }).click();
+  await expect(page.getByTestId("answer-sheet")).toContainText("2 / 4");
+  await expect(page.getByTestId("answer-sheet")).not.toContainText("correct");
+  await page.getByRole("button", { name: "Hide breakdown" }).click();
   await page.getByRole("button", { name: "Dispute result" }).click();
   await page.getByLabel("Disputed question").selectOption({ label: "Q3: Explain caching in one sentence. (2/4)" });
   await page.getByPlaceholder("Explain what you believe is wrong and why.").fill("My definition covers both locality and reuse; please re-mark.");
