@@ -53,6 +53,11 @@ export interface Exam {
   assignment_id?: string;
   assignment_status?: string;
   assignment_count?: number;
+  instructions?: string;
+  shuffle_questions?: boolean;
+  shuffle_options?: boolean;
+  lifecycle?: string;
+  results_published_at?: string | null;
 }
 
 export interface QuestionOption {
@@ -68,6 +73,9 @@ export interface ExamQuestion {
   exam_id: string;
   question_text: string;
   question_type: "mcq" | "multiple_select" | "written" | string;
+  marking_scheme?: string;
+  category?: string;
+  difficulty?: string;
   marks: number;
   sort_order: number;
   status: string;

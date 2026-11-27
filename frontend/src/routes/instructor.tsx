@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { AppShell } from "@/components/layout/AppShell";
@@ -13,6 +13,7 @@ import {
   useExamAssignments,
   useExamAttendance,
   useExamQuestions,
+  useImportCandidates,
   useInstructorExams,
   usePublishExam,
   useRevokeExamAssignment,
@@ -31,7 +32,8 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { Search, Download, ExternalLink, ClipboardList, Save, UserPlus, X, Plus, Send, Trash2 } from "lucide-react";
+import { Search, Download, ExternalLink, ClipboardList, Save, UserPlus, X, Plus, Send, Trash2, Eye, BarChart3, BookOpen, Upload } from "lucide-react";
+import { api } from "@/lib/api";
 import type { Exam, ExamAttendanceRow, ExamQuestion, RiskLevel } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { NoSessions } from "@/components/common/States";
@@ -355,6 +357,9 @@ function ExamManagement() {
     start_time: "",
     end_time: "",
     rules: "",
+    instructions: "",
+    shuffle_questions: false,
+    shuffle_options: false,
   });
 
   useEffect(() => {
@@ -373,6 +378,9 @@ function ExamManagement() {
       start_time: toDatetimeLocal(selected.start_time),
       end_time: toDatetimeLocal(selected.end_time),
       rules: stringifyRules(selected.rules),
+      instructions: selected.instructions ?? "",
+      shuffle_questions: Boolean(selected.shuffle_questions),
+      shuffle_options: Boolean(selected.shuffle_options),
     });
   }, [selected?.id]);
 
@@ -396,6 +404,9 @@ function ExamManagement() {
     start_time: draft.start_time ? new Date(draft.start_time).toISOString() : null,
     end_time: draft.end_time ? new Date(draft.end_time).toISOString() : null,
     rules: parseRules(draft.rules),
+    instructions: draft.instructions.trim(),
+    shuffle_questions: draft.shuffle_questions,
+    shuffle_options: draft.shuffle_options,
   });
 
   return (
@@ -429,6 +440,9 @@ function ExamManagement() {
                   start_time: toDatetimeLocal(exam.start_time),
                   end_time: toDatetimeLocal(exam.end_time),
                   rules: stringifyRules(exam.rules),
+                  instructions: exam.instructions ?? "",
+                  shuffle_questions: Boolean(exam.shuffle_questions),
+                  shuffle_options: Boolean(exam.shuffle_options),
                 });
               }}
               className={`w-full rounded-xl border p-3 text-left transition ${
@@ -448,7 +462,7 @@ function ExamManagement() {
                   <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs capitalize">
                     {exam.status ?? "draft"}
                   </span>
-                  {exam.status === "published" && (
+                  {exam.status !== "draft" && (
                     <Link
                       to="/exam-results/$examId"
                       params={{ examId: exam.id }}
@@ -514,6 +528,24 @@ function ExamManagement() {
             rows={2}
             className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-primary/40"
           />
+          <textarea
+            aria-label="Candidate instructions"
+            value={draft.instructions}
+            onChange={(event) => setDraft((current) => ({ ...current, instructions: event.target.value }))}
+            placeholder="Instructions shown to candidates before and during the exam"
+            rows={2}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-primary/40"
+          />
+          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={draft.shuffle_questions} onChange={(event) => setDraft((current) => ({ ...current, shuffle_questions: event.target.checked }))} />
+              Randomize question order per candidate
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={draft.shuffle_options} onChange={(event) => setDraft((current) => ({ ...current, shuffle_options: event.target.checked }))} />
+              Randomize option order per candidate
+            </label>
+          </div>
 
           <div className="grid gap-2 md:grid-cols-4">
             <input
@@ -606,6 +638,7 @@ function ExamManagement() {
 
           {selected && (
             <>
+              <ExamToolbar exam={selected} />
               <QuestionBuilder exam={selected} />
               <AssignmentPanel exam={selected} />
               <AttendancePanel exam={selected} />
@@ -617,65 +650,110 @@ function ExamManagement() {
   );
 }
 
+function ExamToolbar({ exam }: { exam: Exam }) {
+  const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const [starting, setStarting] = useState(false);
+  const preview = async () => {
+    setError("");
+    setStarting(true);
+    try {
+      const attempt = await api.startSandbox(exam.id);
+      navigate({ to: "/exam", search: { attempt_id: attempt.attempt_id } });
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : "Could not open the sandbox preview.");
+    } finally {
+      setStarting(false);
+    }
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+      <span className="mr-auto text-xs text-muted-foreground">
+        Lifecycle: <span className="capitalize text-foreground">{exam.lifecycle ?? exam.status}</span>
+      </span>
+      <GlowButton size="sm" variant="ghost" onClick={preview} disabled={starting}>
+        <Eye className="h-4 w-4" /> {starting ? "Opening…" : "Preview as candidate (sandbox)"}
+      </GlowButton>
+      <Link to="/bank">
+        <GlowButton size="sm" variant="ghost"><BookOpen className="h-4 w-4" /> Add from question bank</GlowButton>
+      </Link>
+      {exam.status !== "draft" && (
+        <Link to="/exam-results/$examId" params={{ examId: exam.id }}>
+          <GlowButton size="sm" variant="outline"><BarChart3 className="h-4 w-4" /> Monitor, grade &amp; results</GlowButton>
+        </Link>
+      )}
+      {error && <p role="alert" className="w-full text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+type BuilderType = "mcq" | "multiple_select" | "written";
+type BuilderDraft = {
+  question_id: string;
+  question_text: string;
+  question_type: BuilderType;
+  marking_scheme: string;
+  difficulty: string;
+  category: string;
+  marks: number;
+  options: { option_id?: string; option_text: string; is_correct: boolean; sort_order: number }[];
+};
+
+const TYPE_LABELS: Record<BuilderType, string> = { mcq: "Single answer", multiple_select: "Multiple select", written: "Written" };
+
+function blankDraft(): BuilderDraft {
+  return {
+    question_id: "",
+    question_text: "",
+    question_type: "mcq",
+    marking_scheme: "all_or_nothing",
+    difficulty: "medium",
+    category: "",
+    marks: 1,
+    options: [0, 1, 2, 3].map((index) => ({ option_text: "", is_correct: index === 0, sort_order: index })),
+  };
+}
+
 function QuestionBuilder({ exam }: { exam: Exam }) {
   const questions = useExamQuestions(exam.id);
   const saveQuestion = useSaveExamQuestion();
   const deleteQuestion = useDeleteExamQuestion();
   const [validationError, setValidationError] = useState("");
-  const [draft, setDraft] = useState<{
-    question_id: string;
-    question_text: string;
-    marks: number;
-    options: { option_id?: string; option_text: string; is_correct: boolean; sort_order: number }[];
-  }>({
-    question_id: "",
-    question_text: "",
-    marks: 1,
-    options: [
-      { option_text: "", is_correct: true, sort_order: 0 },
-      { option_text: "", is_correct: false, sort_order: 1 },
-      { option_text: "", is_correct: false, sort_order: 2 },
-      { option_text: "", is_correct: false, sort_order: 3 },
-    ],
-  });
+  const [draft, setDraft] = useState<BuilderDraft>(blankDraft);
+  const locked = exam.status === "published" || exam.status === "scheduled";
 
   const editQuestion = (question: ExamQuestion) => {
+    const type = (["mcq", "multiple_select", "written"].includes(question.question_type) ? question.question_type : "mcq") as BuilderType;
     setDraft({
       question_id: question.question_id,
       question_text: question.question_text,
+      question_type: type,
+      marking_scheme: question.marking_scheme === "partial" ? "partial" : "all_or_nothing",
+      difficulty: question.difficulty || "medium",
+      category: question.category || "",
       marks: question.marks,
-      options:
-        question.options.length > 0
-          ? question.options.map((option, index) => ({
-              option_id: option.option_id,
-              option_text: option.option_text,
-              is_correct: !!option.is_correct,
-              sort_order: index,
-            }))
-          : [
-              { option_text: "", is_correct: true, sort_order: 0 },
-              { option_text: "", is_correct: false, sort_order: 1 },
-            ],
+      options: question.options.length
+        ? question.options.map((option, index) => ({ option_id: option.option_id, option_text: option.option_text, is_correct: !!option.is_correct, sort_order: index }))
+        : blankDraft().options,
     });
   };
 
-  const reset = () =>
-    setDraft({
-      question_id: "",
-      question_text: "",
-      marks: 1,
-      options: [
-        { option_text: "", is_correct: true, sort_order: 0 },
-        { option_text: "", is_correct: false, sort_order: 1 },
-        { option_text: "", is_correct: false, sort_order: 2 },
-        { option_text: "", is_correct: false, sort_order: 3 },
-      ],
-    });
+  const reset = () => setDraft(blankDraft());
 
   useEffect(() => {
     reset();
     setValidationError("");
   }, [exam.id]);
+
+  const setType = (type: BuilderType) =>
+    setDraft((current) => {
+      let options = current.options.length ? current.options : blankDraft().options;
+      if (type === "mcq") {
+        const first = Math.max(0, options.findIndex((option) => option.is_correct));
+        options = options.map((option, index) => ({ ...option, is_correct: index === first }));
+      }
+      return { ...current, question_type: type, options };
+    });
 
   const save = () => {
     const cleanOptions = draft.options
@@ -685,13 +763,11 @@ function QuestionBuilder({ exam }: { exam: Exam }) {
       setValidationError("Enter a complete question.");
       return;
     }
-    if (cleanOptions.length < 2) {
-      setValidationError("Add at least two answer options.");
-      return;
-    }
-    if (!cleanOptions.some((option) => option.is_correct)) {
-      setValidationError("Mark one populated option as the correct answer.");
-      return;
+    if (draft.question_type !== "written") {
+      const correct = cleanOptions.filter((option) => option.is_correct).length;
+      if (cleanOptions.length < 2) return setValidationError("Add at least two answer options.");
+      if (draft.question_type === "mcq" && correct !== 1) return setValidationError("A single-answer question needs exactly one correct option.");
+      if (draft.question_type === "multiple_select" && correct < 1) return setValidationError("Mark at least one correct option.");
     }
     setValidationError("");
     saveQuestion.mutate(
@@ -699,21 +775,29 @@ function QuestionBuilder({ exam }: { exam: Exam }) {
         exam_id: exam.id,
         values: {
           ...draft,
-          question_type: "mcq",
           status: "active",
-          sort_order: questions.data?.length ?? 0,
-          options: cleanOptions,
+          sort_order: draft.question_id
+            ? questions.data?.find((q) => q.question_id === draft.question_id)?.sort_order ?? 0
+            : questions.data?.length ?? 0,
+          options: draft.question_type === "written" ? [] : cleanOptions,
+          marking_scheme: draft.question_type === "multiple_select" ? draft.marking_scheme : "",
         },
       },
       { onSuccess: reset },
     );
   };
 
+  const inputCls =
+    "h-10 rounded-lg border border-white/10 bg-white/5 px-3 text-sm outline-none placeholder:text-muted-foreground focus:border-primary/40";
+
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h4 className="text-sm font-semibold">Question builder</h4>
-        <span className="text-xs text-muted-foreground">{questions.data?.length ?? 0} MCQs</span>
+        <span className="text-xs text-muted-foreground">
+          {questions.data?.length ?? 0} questions · {(questions.data ?? []).reduce((sum, q) => sum + q.marks, 0)} marks
+        </span>
+        {locked && <span className="text-xs text-amber-300">Return the exam to draft to change questions. Active attempts keep their own snapshot.</span>}
       </div>
       <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
         <div className="space-y-2">
@@ -729,13 +813,18 @@ function QuestionBuilder({ exam }: { exam: Exam }) {
                   <span className="shrink-0 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">{question.marks} marks</span>
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {question.options.length} options · {question.options.find((option) => option.is_correct)?.option_text || "No correct option"}
+                  {TYPE_LABELS[question.question_type as BuilderType] ?? question.question_type}
+                  {question.question_type === "written"
+                    ? " · graded manually"
+                    : ` · ${question.options.length} options · ${question.options.filter((option) => option.is_correct).map((option) => option.option_text).join(", ") || "no correct option"}`}
+                  {question.question_type === "multiple_select" && ` · ${question.marking_scheme === "partial" ? "partial credit" : "all or nothing"}`}
                 </div>
               </button>
               <button
                 type="button"
                 title="Delete question"
-                disabled={deleteQuestion.isPending}
+                aria-label="Delete question"
+                disabled={deleteQuestion.isPending || locked}
                 onClick={() => {
                   if (window.confirm("Delete this question and its answer options?")) {
                     deleteQuestion.mutate({ exam_id: exam.id, question_id: question.question_id });
@@ -749,54 +838,86 @@ function QuestionBuilder({ exam }: { exam: Exam }) {
           ))}
           {!questions.isLoading && !questions.data?.length && (
             <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm text-muted-foreground">
-              No questions yet. Add MCQs before publishing.
+              No questions yet. Add questions here or from the question bank before publishing.
             </div>
           )}
         </div>
-        <div className="space-y-2">
+        <fieldset className="space-y-2" disabled={locked}>
+          <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Question type">
+            {(Object.keys(TYPE_LABELS) as BuilderType[]).map((type) => (
+              <button
+                key={type}
+                type="button"
+                role="radio"
+                aria-checked={draft.question_type === type}
+                onClick={() => setType(type)}
+                className={cn(
+                  "rounded-lg border px-3 py-1.5 text-xs",
+                  draft.question_type === type ? "border-primary bg-primary/15 text-primary" : "border-white/10 text-muted-foreground",
+                )}
+              >
+                {TYPE_LABELS[type]}
+              </button>
+            ))}
+          </div>
           <textarea
+            aria-label="Question text"
             value={draft.question_text}
             onChange={(event) => setDraft((current) => ({ ...current, question_text: event.target.value }))}
             placeholder="Question text"
             rows={3}
             className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-primary/40"
           />
-          <input
-            value={draft.marks}
-            onChange={(event) => setDraft((current) => ({ ...current, marks: Number(event.target.value) }))}
-            type="number"
-            min={1}
-            className="h-10 w-32 rounded-lg border border-white/10 bg-white/5 px-3 text-sm outline-none focus:border-primary/40"
-          />
-          {draft.options.map((option, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <input
-                type="radio"
-                name={`correct-option-${exam.id}`}
-                aria-label={`Mark option ${String.fromCharCode(65 + index)} correct`}
-                checked={option.is_correct}
-                onChange={() =>
-                  setDraft((current) => ({
-                    ...current,
-                    options: current.options.map((row, idx) => ({ ...row, is_correct: idx === index })),
-                  }))
-                }
-              />
-              <input
-                value={option.option_text}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    options: current.options.map((row, idx) =>
-                      idx === index ? { ...row, option_text: event.target.value } : row,
-                    ),
-                  }))
-                }
-                placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                className="h-10 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 text-sm outline-none placeholder:text-muted-foreground focus:border-primary/40"
-              />
-            </div>
-          ))}
+          <div className="grid grid-cols-3 gap-2">
+            <input aria-label="Marks" value={draft.marks} onChange={(event) => setDraft((current) => ({ ...current, marks: Number(event.target.value) }))} type="number" min={1} className={inputCls} />
+            <select aria-label="Difficulty" value={draft.difficulty} onChange={(event) => setDraft((current) => ({ ...current, difficulty: event.target.value }))} className={cn(inputCls, "bg-background")}>
+              <option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
+            </select>
+            <input aria-label="Category" value={draft.category} placeholder="Topic" onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))} className={inputCls} />
+          </div>
+          {draft.question_type === "multiple_select" && (
+            <select aria-label="Marking scheme" value={draft.marking_scheme} onChange={(event) => setDraft((current) => ({ ...current, marking_scheme: event.target.value }))} className={cn(inputCls, "w-full bg-background")}>
+              <option value="all_or_nothing">All or nothing: full marks only for the exact correct set</option>
+              <option value="partial">Partial: marks × (correct − wrong picked) ÷ total correct, floored, min 0</option>
+            </select>
+          )}
+          {draft.question_type === "written" ? (
+            <p className="text-xs text-muted-foreground">Written answers are graded manually from 0 to {draft.marks} marks in the grading queue.</p>
+          ) : (
+            draft.options.map((option, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <input
+                  type={draft.question_type === "mcq" ? "radio" : "checkbox"}
+                  name={`correct-option-${exam.id}`}
+                  aria-label={`Mark option ${String.fromCharCode(65 + index)} correct`}
+                  checked={option.is_correct}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      options: current.options.map((row, idx) =>
+                        current.question_type === "mcq"
+                          ? { ...row, is_correct: idx === index }
+                          : idx === index
+                            ? { ...row, is_correct: event.target.checked }
+                            : row,
+                      ),
+                    }))
+                  }
+                />
+                <input
+                  value={option.option_text}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      options: current.options.map((row, idx) => (idx === index ? { ...row, option_text: event.target.value } : row)),
+                    }))
+                  }
+                  placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                  className={cn(inputCls, "flex-1")}
+                />
+              </div>
+            ))
+          )}
           <div className="flex flex-wrap justify-end gap-2">
             <GlowButton variant="ghost" size="sm" onClick={reset}>New question</GlowButton>
             <GlowButton size="sm" disabled={!draft.question_text.trim() || saveQuestion.isPending} onClick={save}>
@@ -805,12 +926,96 @@ function QuestionBuilder({ exam }: { exam: Exam }) {
             </GlowButton>
           </div>
           {(validationError || saveQuestion.error || deleteQuestion.error) && (
-            <p className="rounded-lg border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+            <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
               {validationError || saveQuestion.error?.message || deleteQuestion.error?.message}
             </p>
           )}
-        </div>
+        </fieldset>
       </div>
+    </div>
+  );
+}
+
+function CandidateImport({ exam }: { exam: Exam }) {
+  const importCandidates = useImportCandidates(exam.id);
+  const [open, setOpen] = useState(false);
+  const [content, setContent] = useState("");
+  const [format, setFormat] = useState<"csv" | "json">("csv");
+  const [result, setResult] = useState<any>(null);
+  const [error, setError] = useState("");
+
+  const run = async (commit: boolean) => {
+    setError("");
+    try {
+      setResult(await importCandidates.mutateAsync({ content, fileFormat: format, commit }));
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : "Import failed.");
+    }
+  };
+
+  if (!open) {
+    return (
+      <button type="button" className="mt-3 inline-flex items-center gap-1 text-xs text-primary underline" onClick={() => setOpen(true)}>
+        <Upload className="h-3 w-3" /> Bulk import candidates (CSV / JSON)
+      </button>
+    );
+  }
+  return (
+    <div className="mt-3 space-y-2 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <input
+          type="file"
+          accept=".csv,.json"
+          aria-label="Candidate file"
+          onChange={async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            setFormat(file.name.toLowerCase().endsWith(".json") ? "json" : "csv");
+            setContent(await file.text());
+            setResult(null);
+          }}
+        />
+        <button
+          type="button"
+          className="text-primary underline"
+          onClick={() => {
+            setFormat("csv");
+            setContent("full_name,email\nAyesha Khan,ayesha.khan@example.edu\nBilal Raza,bilal.raza@example.edu");
+            setResult(null);
+          }}
+        >
+          Insert sample
+        </button>
+        <button type="button" className="ml-auto text-muted-foreground" onClick={() => setOpen(false)}>Close</button>
+      </div>
+      <p className="text-[11px] text-muted-foreground">Columns: full_name, email. New accounts get a one-time temporary password; existing candidates are enrolled. Nothing is saved unless every row is valid.</p>
+      <textarea aria-label="Candidate import content" value={content} onChange={(event) => { setContent(event.target.value); setResult(null); }} rows={4} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-xs outline-none" />
+      <div className="flex gap-2">
+        <GlowButton size="sm" variant="ghost" disabled={!content.trim() || importCandidates.isPending} onClick={() => run(false)}>Validate</GlowButton>
+        <GlowButton size="sm" disabled={!result || result.summary.invalid > 0 || result.summary.committed || importCandidates.isPending} onClick={() => run(true)}>
+          Import &amp; enrol {result?.summary.valid ?? 0}
+        </GlowButton>
+      </div>
+      {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+      {result && (
+        <div className="space-y-1 text-xs">
+          <p className={result.summary.invalid ? "text-amber-300" : "text-emerald-300"}>
+            {result.summary.rows} rows · {result.summary.valid} valid · {result.summary.invalid} with errors
+            {result.summary.committed && ` · imported (${result.summary.created ?? 0} new accounts)`}
+          </p>
+          {result.rows.filter((row: any) => row.errors.length).map((row: any) => (
+            <p key={row.row} className="text-destructive">Row {row.row} ({row.email || "no email"}): {row.errors.join(" ")}</p>
+          ))}
+          {result.credentials?.length > 0 && (
+            <div className="rounded border border-amber-400/30 bg-amber-400/10 p-2 text-amber-100">
+              <p className="font-semibold">Temporary passwords — shown once, share securely:</p>
+              {result.credentials.map((row: any) => (
+                <p key={row.email} className="font-mono">{row.email}: {row.temporary_password}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -888,6 +1093,7 @@ function AssignmentPanel({ exam }: { exam: Exam }) {
           {(assignExam.error || revokeAssignment.error)?.message}
         </p>
       )}
+      <CandidateImport exam={exam} />
     </div>
   );
 }

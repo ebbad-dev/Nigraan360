@@ -156,6 +156,11 @@ function mapBackendExam(raw: any): Exam {
     assignment_id: raw.assignment_id,
     assignment_status: raw.assignment_status,
     assignment_count: Number(raw.assignment_count || 0),
+    instructions: raw.instructions || "",
+    shuffle_questions: Boolean(raw.shuffle_questions),
+    shuffle_options: Boolean(raw.shuffle_options),
+    lifecycle: raw.lifecycle,
+    results_published_at: raw.results_published_at ?? null,
   };
 }
 
@@ -165,6 +170,9 @@ function mapBackendQuestion(raw: any): ExamQuestion {
     exam_id: raw.exam_id,
     question_text: raw.question_text || "",
     question_type: raw.question_type || "mcq",
+    marking_scheme: raw.marking_scheme || "",
+    category: raw.category || "",
+    difficulty: raw.difficulty || "medium",
     marks: Number(raw.marks || 1),
     sort_order: Number(raw.sort_order || 0),
     status: raw.status || "active",
