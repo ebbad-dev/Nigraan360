@@ -19,13 +19,13 @@ def send_password_reset_email(to_email: str, reset_url: str) -> None:
         raise EmailConfigurationError("SMTP is not configured")
 
     msg = EmailMessage()
-    msg["Subject"] = "Reset your ProctorAI password"
+    msg["Subject"] = "Reset your Nigran 360 password"
     msg["From"] = SMTP_FROM
     msg["To"] = to_email
     msg.set_content(
         "\n".join(
             [
-                "A password reset was requested for your ProctorAI account.",
+                "A password reset was requested for your Nigran 360 account.",
                 "",
                 f"Open this secure link to choose a new password: {reset_url}",
                 "",

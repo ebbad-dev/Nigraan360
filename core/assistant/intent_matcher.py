@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-# Guide Assistant: a deterministic, role-aware knowledge base describing how ProctorAI works.
+# Guide Assistant: a deterministic, role-aware knowledge base describing how Nigran 360 works.
 # Answers must stay in sync with the actual product flow (setup wizard, exam page, risk scoring,
 # review and reports). Confidence reflects how strongly the question matched an entry.
 
@@ -64,7 +64,7 @@ ENTRIES: tuple[Entry, ...] = (
         ("camera", "webcam", "video", "blocked", "use", "permission", "black", "allowed"),
         "Allow camera access for this site from the camera icon in the browser address bar, and close "
         "other apps that use the camera (Teams, Zoom, OBS, Camera). If the wizard says the camera is in "
-        "use by another app, close those apps and press Restart camera. During the exam the ProctorAI "
+        "use by another app, close those apps and press Restart camera. During the exam the Nigran 360 "
         "engine uses the camera, so the browser preview is released when you press Start exam. "
         "Administrators can add a secondary camera by setting WEBCAM_INDEX_SECONDARY.",
         ("Microphone help", "Start exam"),
@@ -140,7 +140,7 @@ ENTRIES: tuple[Entry, ...] = (
     Entry(
         "system_status", ANY,
         ("database", "offline", "online", "status", "connected", "backend", "server", "sql", "api", "down"),
-        "The Live API and Backend badges show whether ProctorAI can reach its server and database. "
+        "The Live API and Backend badges show whether Nigran 360 can reach its server and database. "
         "Monitoring events are only accepted once they are saved to SQL Server and are retried until "
         "then, so if the database is offline ask your administrator to restart SQL Server before starting "
         "an exam. Administrators can check database, migrations, camera engine and Browser Guard status "
@@ -198,7 +198,7 @@ def chat(query: str, role: str = "student", context: dict | None = None) -> dict
             "found": True,
             "intent": "exam_content_refusal",
             "confidence": 1.0,
-            "answer": "I can't help with exam answers. I can help with ProctorAI setup, monitoring, reports, and review workflows.",
+            "answer": "I can't help with exam answers. I can help with Nigran 360 setup, monitoring, reports, and review workflows.",
             "quick_actions": ["Start exam", "Camera help", "Risk score"],
             "references": [],
         }

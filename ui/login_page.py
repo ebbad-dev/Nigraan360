@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — ui/login_page.py
+# Nigran 360 — ui/login_page.py
 #
 # Phase 8: Enhanced Login + Strictness Mode selection.
 # ============================================================
@@ -39,7 +39,7 @@ class LoginPage:
 
     def render(self) -> dict | None:
         st.markdown(_LOGIN_CSS, unsafe_allow_html=True)
-        st.markdown('<div class="hero-title">ProctorAI</div>', unsafe_allow_html=True)
+        st.markdown('<div class="hero-title">Nigran 360</div>', unsafe_allow_html=True)
         st.markdown('<div class="hero-subtitle">Enterprise Exam Integrity Platform</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="login-card">', unsafe_allow_html=True)

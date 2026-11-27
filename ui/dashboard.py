@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — ui/dashboard.py
+# Nigran 360 — ui/dashboard.py
 #
 # Phase 9: Active Exam Dashboard Overhaul
 # Added Evidence Gallery, Assistant Chat, Dual-Camera layout,
@@ -214,7 +214,7 @@ class Dashboard:
                         st.caption(f"**{shot['event_type']}** — {shot['time']} (Score: {shot['risk_score']})")
 
         with t3:
-            st.subheader("ProctorAI Help Assistant")
+            st.subheader("Nigran 360 Help Assistant")
             chat_html = ""
             for msg in assistant_chat[-6:]:
                 cls = "chat-usr" if msg["role"] == "user" else "chat-ast"

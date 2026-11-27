@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — input/screenshot_capture.py
+# Nigran 360 — input/screenshot_capture.py
 #
 # CHANGES:
 #   1. Each screenshot now stored with full evidence metadata:

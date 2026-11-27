@@ -1,1 +1,1 @@
-"""Core ProctorAI domain package."""
+"""Core Nigran 360 domain package."""

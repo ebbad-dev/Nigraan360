@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — ui/checklist_page.py
+# Nigran 360 — ui/checklist_page.py
 # Phase 7: Secure Exam Checklist
 # Pre-exam health checks before monitoring begins.
 # ============================================================

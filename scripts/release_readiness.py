@@ -101,7 +101,7 @@ def _database_checks(results: dict) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Verify ProctorAI release prerequisites without exposing secrets.")
+    parser = argparse.ArgumentParser(description="Verify Nigran 360 release prerequisites without exposing secrets.")
     parser.add_argument("--production", action="store_true", help="Validate production-only security settings.")
     parser.add_argument("--database", action="store_true", help="Connect to SQL Server and verify migrations/invariants.")
     args = parser.parse_args()

@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — ui/id_verification_page.py
+# Nigran 360 — ui/id_verification_page.py
 #
 # Phase 13: Identity Verification UI
 # Prompts the user to hold their Student ID to the camera.

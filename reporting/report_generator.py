@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — reporting/report_generator.py
+# Nigran 360 — reporting/report_generator.py
 #
 # CHANGES:
 #   1. Screenshot evidence gallery embedded in PDF.
@@ -91,7 +91,7 @@ class ReportGenerator:
         sep2 = "-" * 60
         lines = [
             sep,
-            "          ProctorAI — Exam Integrity Report",
+            "          Nigran 360 — Exam Integrity Report",
             sep,
             f"  Generated  : {generated}",
             f"  Session ID : {session_id}",
@@ -197,7 +197,7 @@ class ReportGenerator:
                              fontSize=8, textColor=DGRAY, leading=12)
 
         story = [
-            Paragraph("ProctorAI", sT),
+            Paragraph("Nigran 360", sT),
             Paragraph("Exam Integrity Report", sSub),
             HRFlowable(width="100%", thickness=2, color=BLUE, spaceAfter=10),
         ]

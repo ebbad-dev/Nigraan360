@@ -1,10 +1,10 @@
-# ProctorAI Operator Runbook
+# Nigran 360 Operator Runbook
 
 This runbook covers the local production-style deployment for the FastAPI, React, SQL Server, and proctoring sidecar stack.
 
 ## Prerequisites
 
-- Windows account with SQL Server access to `localhost / ProctorAI_Lite`.
+- Windows account with SQL Server access to `localhost / Nigran 360_Lite`.
 - Node.js 24 and npm on PATH.
 - CPython 3.12.13. Dependencies are installed from `requirements.lock.txt` into `.venv`.
 - ODBC Driver 17 or 18 for SQL Server.
@@ -58,7 +58,7 @@ The service installer uses NSSM because Node and PowerShell are not native Windo
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/install_windows_service.ps1
-nssm start ProctorAI
+nssm start Nigran 360
 ```
 
 To remove it:
@@ -75,7 +75,7 @@ For a workstation deployment, a scheduled task at logon is often simpler than a 
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/install_windows_scheduled_task.ps1
-Start-ScheduledTask -TaskName ProctorAI
+Start-ScheduledTask -TaskName Nigran 360
 ```
 
 Remove it:
@@ -97,7 +97,7 @@ By default the backup script writes to SQL Server's configured backup directory 
 Restore:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/restore_sqlserver.ps1 -BackupFile .\backups\ProctorAI_Lite_YYYYMMDD_HHMMSS.bak -ConfirmRestore
+powershell -ExecutionPolicy Bypass -File scripts/restore_sqlserver.ps1 -BackupFile .\backups\Nigran 360_Lite_YYYYMMDD_HHMMSS.bak -ConfirmRestore
 ```
 
 Restore replaces the target database and should only be run after confirming the backup file and maintenance window.
@@ -113,7 +113,7 @@ powershell -ExecutionPolicy Bypass -File scripts/invoke_data_retention.ps1
 Move expired data into an access-restricted quarantine directory:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/invoke_data_retention.ps1 -Apply -QuarantineRoot C:\ProctorAI-Quarantine\retention
+powershell -ExecutionPolicy Bypass -File scripts/invoke_data_retention.ps1 -Apply -QuarantineRoot C:\Nigran 360-Quarantine\retention
 ```
 
 See `docs/DATA_RETENTION.md`. Confirm institutional retention rules and legal holds before changing defaults or permanently purging quarantine.

@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — input/webcam_capture.py
+# Nigran 360 — input/webcam_capture.py
 #
 # CHANGES:
 #   1. Accepts camera_index parameter (multi-camera support).

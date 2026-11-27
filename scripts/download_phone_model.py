@@ -37,7 +37,7 @@ def download(url: str, output: Path) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Download the ProctorAI phone/object ONNX model.")
+    parser = argparse.ArgumentParser(description="Download the Nigran 360 phone/object ONNX model.")
     parser.add_argument("--url", default=DEFAULT_URL)
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
     args = parser.parse_args()

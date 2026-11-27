@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — input/audio_capture.py
+# Nigran 360 — input/audio_capture.py
 # Captures microphone audio using sounddevice (or PyAudio fallback).
 # Runs in a background thread; main thread reads .audio_level
 # ============================================================

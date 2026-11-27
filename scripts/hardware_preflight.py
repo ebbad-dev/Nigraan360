@@ -12,7 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Check ProctorAI camera, microphone, and phone model readiness.")
+    parser = argparse.ArgumentParser(description="Check Nigran 360 camera, microphone, and phone model readiness.")
     parser.add_argument("--require-camera", action="store_true")
     parser.add_argument("--require-microphone", action="store_true")
     args = parser.parse_args()

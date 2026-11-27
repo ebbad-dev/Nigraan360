@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI â€” infrastructure/api/fastapi_app.py
+# Nigran 360 â€” infrastructure/api/fastapi_app.py
 #
 # Phase 12: FastAPI backend foundation.
 # Runs alongside Streamlit as a separate process on port 5051.
@@ -42,7 +42,7 @@ if _FASTAPI_AVAILABLE:
     _api_logger = configure_logging(LOGS_DIR, LOG_LEVEL)
 
     app = FastAPI(
-        title="ProctorAI Backend API",
+        title="Nigran 360 Backend API",
         description="Receives browser guard events, provides session and event data.",
         version=APP_VERSION,
     )
@@ -327,7 +327,7 @@ if _FASTAPI_AVAILABLE:
             return
         repo.create_user(
             PROCTORAI_BOOTSTRAP_ADMIN_EMAIL,
-            "ProctorAI Administrator",
+            "Nigran 360 Administrator",
             "admin",
             hash_password(PROCTORAI_BOOTSTRAP_ADMIN_PASSWORD),
         )
@@ -2341,7 +2341,7 @@ else:
 def start_api_server(host: str = "127.0.0.1", port: int = 5051):
     """Start the FastAPI server in a background thread."""
     if not _FASTAPI_AVAILABLE:
-        print("[ProctorAI] FastAPI backend skipped: required imports failed.")
+        print("[Nigran 360] FastAPI backend skipped: required imports failed.")
         if _FASTAPI_IMPORT_ERROR:
             print(f"  Import error: {_FASTAPI_IMPORT_ERROR}")
         print("  Install with: pip install -r requirements.txt")
@@ -2352,7 +2352,7 @@ def start_api_server(host: str = "127.0.0.1", port: int = 5051):
 
     try:
         with socket.create_connection((host, port), timeout=0.5):
-            print(f"[ProctorAI] FastAPI backend already running on http://{host}:{port}")
+            print(f"[Nigran 360] FastAPI backend already running on http://{host}:{port}")
             return
     except OSError:
         pass
@@ -2363,4 +2363,4 @@ def start_api_server(host: str = "127.0.0.1", port: int = 5051):
 
     t = threading.Thread(target=_run, daemon=True, name="FastAPIServer")
     t.start()
-    print(f"[ProctorAI] FastAPI backend running on http://{host}:{port}")
+    print(f"[Nigran 360] FastAPI backend running on http://{host}:{port}")

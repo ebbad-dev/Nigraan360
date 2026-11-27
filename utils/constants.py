@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — utils/constants.py
+# Nigran 360 — utils/constants.py
 #
 # Re-exports all constants from core.events.event_types so
 # that existing imports continue to work without any changes.

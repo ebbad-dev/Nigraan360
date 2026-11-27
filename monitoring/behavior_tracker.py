@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — monitoring/behavior_tracker.py
+# Nigran 360 — monitoring/behavior_tracker.py
 #
 # CHANGES:
 #   1. Accepts new event types: low_light, keyboard, clipboard,

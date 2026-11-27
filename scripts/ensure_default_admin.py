@@ -51,7 +51,7 @@ def main() -> None:
             user["user_id"],
             {
                 "tenant_id": user.get("tenant_id") or tenant["tenant_id"],
-                "full_name": user.get("full_name") or "ProctorAI Administrator",
+                "full_name": user.get("full_name") or "Nigran 360 Administrator",
                 "role": "admin",
                 "is_active": True,
             },
@@ -62,7 +62,7 @@ def main() -> None:
     else:
         result = repo.create_user(
             email=email,
-            full_name="ProctorAI Administrator",
+            full_name="Nigran 360 Administrator",
             role="admin",
             password_hash=password_hash,
             tenant_id=tenant["tenant_id"],

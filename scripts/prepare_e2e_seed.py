@@ -44,7 +44,7 @@ def rotate_existing_user(repo: PlatformRepository, email: str, password: str) ->
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Prepare disposable ProctorAI E2E identities.")
+    parser = argparse.ArgumentParser(description="Prepare disposable Nigran 360 E2E identities.")
     parser.add_argument(
         "--rotate-only",
         action="store_true",
@@ -86,7 +86,7 @@ def main() -> int:
     student = ensure_user(repo, STUDENT_EMAIL, "E2E Student", "student", student_password)
     exam = repo.create_exam(
         {
-            "title": "ProctorAI End-to-End Verification Exam",
+            "title": "Nigran 360 End-to-End Verification Exam",
             "description": "Automated run from login through monitoring, risk, review, and report.",
             "duration_minutes": 30,
             "status": "published",

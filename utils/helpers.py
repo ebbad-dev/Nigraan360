@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — utils/helpers.py
+# Nigran 360 — utils/helpers.py
 #
 # CHANGES:
 #   1. generate_session_id() now appends a 6-char UUID hex suffix

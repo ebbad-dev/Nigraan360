@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ProctorAI Browser Guard",
+  "name": "Nigran 360 Browser Guard",
   "version": "1.0.0",
-  "description": "Reports active exam tab, URL, focus, keyboard, clipboard, and fullscreen events to the local ProctorAI backend.",
+  "description": "Reports active exam tab, URL, focus, keyboard, clipboard, and fullscreen events to the local Nigran 360 backend.",
   "permissions": ["tabs", "activeTab", "storage", "alarms"],
   "host_permissions": ["http://127.0.0.1:5051/*", "http://localhost:5051/*", "<all_urls>"],
   "background": {
@@ -16,6 +16,6 @@
     }
   ],
   "action": {
-    "default_title": "ProctorAI Browser Guard"
+    "default_title": "Nigran 360 Browser Guard"
   }
 }

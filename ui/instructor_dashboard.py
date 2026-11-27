@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — ui/instructor_dashboard.py
+# Nigran 360 — ui/instructor_dashboard.py
 #
 # Phase 15: Instructor Review Panel
 # Allows instructors to review completed sessions, filter by risk,

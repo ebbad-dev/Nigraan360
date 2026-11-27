@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — reporting/graph_generator.py
+# Nigran 360 — reporting/graph_generator.py
 #
 # CHANGES:
 #   1. All new event types added to EVENT_COLORS (no more grey

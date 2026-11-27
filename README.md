@@ -1,148 +1,145 @@
-# ProctorAI
+# Nigran 360
 
-ProctorAI is a local FastAPI + React/TanStack Start proctoring platform with SQL Server persistence, role-based authentication, live camera/audio/browser monitoring, risk scoring, evidence capture, and PDF reporting.
+**Secure Examination Management System** — Technoverse 5.0 Web-e-Thon submission.
+
+Nigran 360 is a full-stack exam platform built on FastAPI + SQL Server (backend) and React 19 + TanStack Router/Start (frontend). It supports three roles — Administrator, Examiner, and Candidate — and delivers verifiable academic results, a reusable question bank, live attempt monitoring, manual grading, and server-enforced deadline safety.
+
+---
 
 ## Tech Stack
 
-- Frontend: React, TanStack Router/Start, TanStack Query, Tailwind CSS, Radix UI, Recharts
-- Backend: FastAPI, Pydantic, Uvicorn
-- Database: SQL Server via `pyodbc`
-- Proctoring sidecar: OpenCV camera capture, Flask MJPEG stream, sounddevice microphone capture
-- Reports: ReportLab PDF generation
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, TanStack Router/Start, TanStack Query, Tailwind CSS, Recharts |
+| Backend | FastAPI, Pydantic v2, Uvicorn |
+| Database | SQL Server via `pyodbc` (SQLAlchemy-style service layer) |
+| PDF Reports | ReportLab — verifiable academic result certificates with QR token |
+| Proctoring | OpenCV camera capture, Flask MJPEG stream, sounddevice microphone |
 
-## Setup
+---
 
-1. Clone the repository to a local, non-synchronized path. Do not run the active repository, `.venv`, browser profile, or evidence folders from OneDrive/Dropbox/Google Drive.
-2. Install Python 3.12.13 and Node.js 24, then create the reproducible environment:
-   - `powershell -ExecutionPolicy Bypass -File scripts/setup_dev.ps1`
-   - The script creates `.venv`, installs the hash-locked Python graph, and runs `npm ci` for the frontend.
-3. Copy `.env.example` to `.env` or set the variables in your shell. Never commit `.env`.
-4. Configure SQL Server:
-   - `PROCTORAI_DB_SERVER=localhost`
-   - `PROCTORAI_DB_NAME=ProctorAI_Lite`
-   - `PROCTORAI_DB_TRUSTED=true`
-   - `PROCTORAI_DB_DRIVER=ODBC Driver 17 for SQL Server`
-   - `PROCTORAI_DB_ENCRYPT=false` for local trusted SQL Server; use encrypted connections in production when your SQL Server certificate chain is configured.
-5. Configure auth:
-   - Set `AUTH_SECRET` to a stable long random value. Production refuses to start without at least 32 characters.
-   - Optionally set a separate `PROCTOR_DEVICE_SECRET`; otherwise a scoped device secret is derived from `AUTH_SECRET`.
-   - Optionally set `PROCTORAI_BOOTSTRAP_ADMIN_EMAIL` and `PROCTORAI_BOOTSTRAP_ADMIN_PASSWORD` to create the first admin.
-   - If `python` is not available on PATH, set `PYTHON_EXE=C:\path\to\python.exe` or create `.venv\Scripts\python.exe`.
-6. Configure SMTP for password reset:
-   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_TLS`
-   - `FRONTEND_URL=http://127.0.0.1:8080`
-7. Configure Google OAuth if you want Google sign-in/sign-up:
-   - Create an OAuth client in Google Cloud Console.
-   - Add redirect URI `http://127.0.0.1:5051/auth/google/callback` for local use.
-   - Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and optionally `GOOGLE_REDIRECT_URI`.
-   - New Google users are created as students; instructor/admin Google login works only for existing accounts with those roles.
-8. Install the phone/object model:
-   - `python scripts/download_phone_model.py`
-   - This saves `models/phone_detector.onnx`, which enables COCO `cell phone` detection.
-9. Load Browser Guard:
-   - Open `chrome://extensions` or `edge://extensions`.
-   - Enable Developer mode.
-   - Choose **Load unpacked** and select `browser_guard_extension`.
-   - Or run `npm run browser-guard` to open a dedicated Chrome/Edge Browser Guard profile that reports exact tab URLs through the DevTools protocol.
+## Innovation Challenge 5.3 — Failure-Resilient Examinations
 
-## Run
+The core differentiator is **immutable attempt snapshots with server-side deadline enforcement**:
 
-```powershell
-npm install
-powershell -ExecutionPolicy Bypass -File scripts/setup_dev.ps1
-npm run dev
-```
+1. **Snapshot on start** — when a candidate begins, the exact question paper (with all options) is frozen into `snapshot_json` on the attempt row. If an examiner later edits the exam, in-progress candidates see the original paper they started with. No question drift mid-exam.
 
-Services:
+2. **Idempotent submit** — a double-submit (network retry, tab crash) replays the existing result instead of overwriting it. The service detects the concurrent write race and returns the winning attempt to both callers.
 
-- Frontend: `http://127.0.0.1:8080`
-- FastAPI: `http://127.0.0.1:5051`
-- Proctor video sidecar: `http://127.0.0.1:5050`
+3. **Server-side expiry sweep** — a background thread runs every 60 seconds and auto-finalises any attempt whose `started_at + duration` has passed, even if the browser tab was closed or the network dropped. Candidates cannot extend time by disconnecting.
 
-`node launch_proctorai.js` also starts Browser Guard by default. Set `BROWSER_GUARD_AUTO_START=false` if you do not want it to open a dedicated Chrome/Edge profile.
+4. **Verifiable PDF certificates** — results are signed with a unique token. Anyone can visit `/verify/<token>` to confirm the certificate is genuine and has not been revoked.
 
-Runtime logs are written under `logs/`:
-
-- `api_access.log` for structured FastAPI request logs
-- `fastapi.log`, `proctor.log`, `frontend.log`, and `browser-guard.log` for launcher child processes
-
-Authenticated operators can inspect:
-
-- `GET /ops/status` for runtime, DB, model, storage, and Browser Guard status
-- `GET /ops/metrics` for admin-only platform counters
-
-Production-style local start:
-
-```powershell
-Copy-Item .env.production.example .env.production
-npm run prod
-```
-
-Operational helpers:
-
-```powershell
-npm run health
-npm run quality
-npm run preflight
-npm run sql:smoke
-npm run sql:backup
-```
-
-See [deployment/OPERATOR_RUNBOOK.md](deployment/OPERATOR_RUNBOOK.md) for Windows service installation, scheduled task setup, health checks, SQL backup/restore, and operator verification.
-
-Generated evidence and runtime data are intentionally excluded from Git. Review [docs/DATA_RETENTION.md](docs/DATA_RETENTION.md) and schedule `scripts/invoke_data_retention.ps1` according to institutional policy.
+---
 
 ## Roles
 
-- Students can register from the UI, view assigned exams, complete setup, start monitored sessions, and view permitted reports.
-- Instructors can create/edit exams, manage lifecycle status, schedule windows, assign/revoke students, review sessions, and generate reports.
-- Admins can manage settings and have instructor privileges.
-- Admins can use `/admin` to manage institutions and review audit activity.
-- Admins can create users, assign roles, move users between institutions, disable accounts, and set temporary passwords from `/admin`.
+| Role | Access |
+|---|---|
+| **Administrator** | Tenant management, user creation/role assignment, audit log, all instructor privileges |
+| **Examiner** | Create/edit exams, question bank, assign candidates, live monitor, grading queue, publish results, analytics |
+| **Candidate** | View assigned exams, take exams, download verified result PDFs, read announcements |
 
-Instructor/admin accounts are not publicly self-registered. Use bootstrap env variables or create them directly in the database.
+---
 
-## Enterprise Foundation
+## Setup (Local Development)
 
-Schema initialization is non-destructive and creates a default tenant for existing data. New users, exams, sessions, events, evidence, reports, settings, and audit logs are tenant-aware. Admin actions such as login/logout, password reset, exam changes, settings updates, session start/end, evidence capture, reviews, reports, and tenant creation are recorded in `AuditLogs`.
+1. Install **Python 3.12** and **Node.js 24**.
+2. Create `.env` from `.env.example` — never commit `.env`.
+3. Configure SQL Server:
+   ```
+   PROCTORAI_DB_SERVER=localhost
+   PROCTORAI_DB_NAME=Nigran360
+   PROCTORAI_DB_TRUSTED=true
+   PROCTORAI_DB_DRIVER=ODBC Driver 17 for SQL Server
+   ```
+4. Set `AUTH_SECRET` to a random string of at least 32 characters.
+5. Bootstrap the first admin:
+   ```
+   PROCTORAI_BOOTSTRAP_ADMIN_EMAIL=admin@example.com
+   PROCTORAI_BOOTSTRAP_ADMIN_PASSWORD=AdminPass123!
+   ```
+6. Install dependencies and start:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/setup_dev.ps1
+   npm run dev
+   ```
 
-## Proctoring Notes
+Services:
+- Frontend: `http://127.0.0.1:8080`
+- API: `http://127.0.0.1:5051`
+- Proctor sidecar: `http://127.0.0.1:5050`
 
-The platform logs real browser fallback events, Browser Guard exact URL/tab events, audio threshold events, camera status, face-missing/low-light/frozen-camera events, phone detections, and evidence screenshots. If the ONNX model is missing or fails to load, the API reports `phone_detection: unavailable` and does not emit phone events.
+---
 
-Browser signals are accepted only from the authenticated student exam client, a short-lived extension token bound to the active session, or the trusted local companion. The Python sidecar signs AI event posts with the proctor device credential. Heartbeats update connectivity only and never add risk points.
+## Demo Data (Quick Start)
 
-Scored monitoring events are acknowledged only after SQL persistence. Producers retry transient failures with a stable, session-bound ingestion ID, and filtered unique indexes prevent a retry from duplicating browser activity or risk points.
+After the first run the bootstrap admin is created automatically. Use these credentials to explore every role:
 
-## Test And Verification
+| Role | Email | Password |
+|---|---|---|
+| Administrator | `admin@nigran360.test` | set via `PROCTORAI_BOOTSTRAP_ADMIN_EMAIL/PASSWORD` |
+| Examiner | create from `/admin` → Users → New User, role = instructor | any password |
+| Candidate | register from the sign-up page (auto-assigned student role) | any password |
+
+**Suggested walkthrough:**
+1. Sign in as Examiner → create an exam, add questions from the Question Bank.
+2. Assign the Candidate user to the exam.
+3. Sign in as Candidate → take the exam (the timer enforces the deadline server-side).
+4. Back as Examiner → grade any written answers → publish results.
+5. Candidate downloads their PDF certificate; paste the token at `/verify/<token>` to confirm it.
+
+---
+
+## Tests
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/run_quality_checks.ps1
+# Backend (71 tests)
+powershell -ExecutionPolicy Bypass -File scripts/setup_dev.ps1
+.venv\Scripts\pytest tests\ -v
+
+# Frontend type-check
+cd frontend
+npm run typecheck
+
+# Frontend production build
+npm run build
 ```
 
-SQL Server smoke:
+---
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/run_sqlserver_live_smoke_desktop.ps1
+## Deployment
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the free-tier topology:
+- **Database**: MonsterASP free MSSQL
+- **API**: Render free web service (Docker, `render.yaml`)
+- **Frontend**: Netlify / Vercel (static, `netlify.toml`)
+
+---
+
+## Project Structure
+
+```
+.
+├── frontend/               # React 19 + TanStack Start SPA
+│   └── src/
+│       ├── routes/         # File-based routes (candidate, bank, exam-results, verify…)
+│       ├── lib/            # api.ts, queries.ts, types.ts
+│       └── components/     # AppShell, GlassCard, GlowButton…
+├── services/               # Business logic (ExamService, AssessmentService)
+├── infrastructure/api/     # FastAPI app + routers
+│   └── routers/            # auth, exam, attempt, session, assessment…
+├── reporting/              # academic_pdf.py — ReportLab PDF builder
+├── tests/                  # pytest suite (71 tests)
+├── docs/                   # DEPLOYMENT.md, DATA_RETENTION.md
+└── scripts/                # setup_dev.ps1, run_quality_checks.ps1…
 ```
 
-When using `Trusted_Connection`, run the SQL smoke and app under the Windows account that has SQL Server access. The Codex sandbox account may not have trusted SQL permissions.
+---
 
-Manual checks:
+## Security Notes
 
-- Guest cannot access protected routes.
-- Student registration/login works.
-- Forgot/reset password requires SMTP and rejects invalid/used/expired tokens.
-- Instructor/admin can create exams and review sessions.
-- Student can start/end an assigned exam session.
-- `/health` works publicly; authenticated `/proctor/status`, `/sessions`, `/reports/generate`, and report download work.
-
-## Production Notes
-
-- Always set `AUTH_SECRET`, SMTP credentials, and strict `CORS_ORIGINS`.
-- Use HTTPS in production and store secrets outside source control.
-- Rotate every legacy/E2E credential before deployment; test artifacts must use synthetic identities and disposable credentials.
-- Keep SQL Server backups for exam/session evidence.
-- Enforce the documented retention and legal-hold policy for captures, reports, logs, exports, runtime profiles, and backups.
-- Review automated risk scores manually before academic decisions.
-- Run production service/task hosts under a Windows account that has SQL Server access when using trusted authentication.
+- Always set `AUTH_SECRET`, SMTP credentials, and restrict `CORS_ORIGINS` before deploying.
+- Use HTTPS in production.
+- Rotate all bootstrap credentials after first deploy.
+- Review automated risk scores before academic decisions; they are advisory, not conclusive.

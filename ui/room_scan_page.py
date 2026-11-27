@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — ui/room_scan_page.py
+# Nigran 360 — ui/room_scan_page.py
 #
 # Phase 14: Room Scan UI (NON-BLOCKING)
 # Shows live camera preview, captures room scan evidence,

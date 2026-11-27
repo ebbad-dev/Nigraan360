@@ -1,7 +1,7 @@
 """Nigran 360 schema additions (migration 20261127_0002_nigran360).
 
 Additive and re-runnable: every statement is guarded so it can run against an existing
-ProctorAI database without touching existing rows or columns.
+Nigran 360 database without touching existing rows or columns.
 """
 
 from __future__ import annotations

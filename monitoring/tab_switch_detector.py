@@ -1,5 +1,5 @@
 # ============================================================
-# ProctorAI — monitoring/tab_switch_detector.py
+# Nigran 360 — monitoring/tab_switch_detector.py
 #
 # CHANGES:
 #   1. Flask endpoints: /key-event, /clipboard-event,
