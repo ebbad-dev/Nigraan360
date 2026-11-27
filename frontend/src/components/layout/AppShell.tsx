@@ -187,7 +187,7 @@ function TopBar() {
       </Link>
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <LayoutDashboard className="h-4 w-4" aria-hidden />
-        <span className="text-foreground">{current?.label ?? "Overview"}</span>
+        <span className="text-foreground">{current?.label ?? (pathname.startsWith("/exam-results") ? "Results & Analytics" : pathname.startsWith("/exam") ? "Examination" : pathname.startsWith("/sessions") ? "Session Review" : "Overview")}</span>
       </div>
       <div className="ml-auto flex items-center gap-2">
         <ModeBadge />
